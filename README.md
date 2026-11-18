@@ -1,8 +1,22 @@
-> **Spaced-C fork.** Every `.c` and `.h` file in this tree is SQLite laid out
-> with [Offside](https://offside.grok.me/): a colon and an indent instead of
-> braces. See [SPACED.md](SPACED.md). It is not the upstream mirror.
+<h1 align="center">SQLite, in spaced C</h1>
 
-<h1 align="center">SQLite Source Repository</h1>
+This is a fork of the [SQLite](https://sqlite.org/) source tree. The database
+engine is unchanged. The C is not: every `.c` and `.h` file is **spaced C**,
+laid out by [Offside](https://offside.grok.me/) from upstream `3ee9f40`.
+
+- Blocks are a colon and an indent, not `{` … `}`.
+- A finished line ends the statement, so those semicolons are gone.
+- Initializer braces stay. So do preprocessor lines, Tcl, Java, JavaScript,
+  and the Lemon grammars.
+- A C compiler will not take this layout. Lay it back to host C with Offside
+  before `configure` / `make`. Sample and caveats: [SPACED.md](SPACED.md).
+
+Below is the upstream README, kept so the Fossil workflow and the build notes
+still apply to the tree around the ported sources.
+
+---
+
+<h2 align="center">Upstream README</h2>
 
 This repository contains the complete source code for the
 [SQLite database engine](https://sqlite.org/) going back

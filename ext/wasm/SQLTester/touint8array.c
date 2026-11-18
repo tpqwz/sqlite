@@ -14,16 +14,16 @@
 */
 
 #include <stdio.h>
-int main(int argc, char const **argv){
-  int i;
-  int rc = 0, colWidth = 30;
-  int ch;
-  printf("[");
-  for( i=0; EOF!=(ch = fgetc(stdin)); ++i ){
-    if( 0!=i ) printf(",");
-    if( i && 0==(i%colWidth) ) puts("");
-    printf("%d",ch);
-  }
-  printf("]");
-  return rc;
-}
+int main(int argc, char const **argv):
+    int i
+    int rc = 0, colWidth = 30
+    int ch
+    printf("[")
+    for( i=0; EOF!=(ch = fgetc(stdin)); ++i ):
+        if( 0!=i ):
+            printf(",")
+        if( i && 0==(i%colWidth) ):
+            puts("")
+        printf("%d",ch)
+    printf("]")
+    return rc

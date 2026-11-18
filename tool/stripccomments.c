@@ -46,200 +46,175 @@ struct {
   0/*keepFirst*/
 };
 
-void do_it_all(void){
-  enum states {
-    S_NONE = 0 /* not in comment */,
-    S_SLASH1 = 1 /* slash - possibly comment prefix */,
-    S_CPP = 2 /* in C++ comment */,
-    S_C = 3 /* in C comment */
-  };
-  int ch, prev = EOF;
-  FILE * out = App.output;
-  int const slash = '/';
-  int const star = '*';
-  int line = 1;
-  int col = 0;
-  enum states state = S_NONE /* current state */;
-  int elide = 0 /* true if currently eliding output */;
-  int state3Col = -99
+void do_it_all(void):
+    enum states:
+        S_NONE = 0
+        S_SLASH1 = 1
+        S_CPP = 2
+        S_C = 3
+    int ch, prev = EOF
+    FILE * out = App.output
+    int const slash = '/'
+    int const star = '*'
+    int line = 1
+    int col = 0
+    enum states state = S_NONE /* current state */
+    int elide = 0 /* true if currently eliding output */
+    int state3Col = -99
     /* huge kludge for odd corner case: */
     /*/ <--- here. state3Col marks the source column in which a C-style
       comment starts, so that it can tell if star-slash inside a
       C-style comment is the end of the comment or is the weird corner
-      case marked at the start of _this_ comment block. */;
-  for( ; EOF != (ch = fgetc(App.input)); prev = ch,
-         ++col){
-    switch(state){
-      case S_NONE:
-        if('\''==ch || '"'==ch || '`'==ch){
-          /* Read string literal...
-             needed to properly catch comments in strings. */
-          int const quote = ch,
-            startLine = line, startCol = col;
-          int ch2, escaped = 0, endOfString = 0;
-          fputc(ch, out);
-          for( ++col; !endOfString && EOF != (ch2 = fgetc(App.input));
-               ++col ){
-            switch(ch2){
-              case '\\': escaped = !escaped;
-                break;
-              case '`':
-              case '\'':
-              case '"':
-                if(!escaped && quote == ch2) endOfString = 1;
-                escaped = 0;
-                break;
-              default:
-                escaped = 0;
-                break;
-            }
-            if('\n'==ch2){
-              ++line;
-              col = 0;
-            }
-            fputc(ch2, out);
-          }
-          if(EOF == ch2){
-            fprintf(stderr, "Unexpected EOF while reading %s literal "
-                    "on line %d column %d.\n",
-                    ('\''==ch) ? "char" : "string",
-                    startLine, startCol);
-            App.rc = 1;
-            return;
-          }
-          break;
-        }
-        else if(slash == ch){
-          /* MARKER(("state 0 ==> 1 @ %d:%d\n", line, col)); */
-          if( '\\'==prev ){
-            /**
-               JS regexes may contain slash-asterisks, as happened at:
+      case marked at the start of _this_ comment block. */
+    for( ; EOF != (ch = fgetc(App.input)); prev = ch,
+             ++col):
+                 switch(state):
+                     case S_NONE:
+                         if('\''==ch || '"'==ch || '`'==ch):
+                             /* Read string literal...
+                                          needed to properly catch comments in strings. */
+                             int const quote = ch,
+                             startLine = line, startCol = col
+                             int ch2, escaped = 0, endOfString = 0
+                             fputc(ch, out)
+                             for( ++col; !endOfString && EOF != (ch2 = fgetc(App.input));
+                                            ++col ):
+                                                switch(ch2):
+                                                    case '\\':
+                                                        escaped = !escaped
+                                                        break
+                                                    case '`':
+                                                    case '\'':
+                                                    case '"':
+                                                        if(!escaped && quote == ch2):
+                                                            endOfString = 1
+                                                        escaped = 0
+                                                        break
+                                                    default:
+                                                        escaped = 0
+                                                        break
+                                                if('\n'==ch2):
+                                                    ++line
+                                                    col = 0
+                                                fputc(ch2, out)
+                             if(EOF == ch2):
+                                 fprintf(stderr, "Unexpected EOF while reading %s literal "
+                                 "on line %d column %d.\n",
+                                 ('\''==ch) ? "char" : "string",
+                                 startLine, startCol)
+                                 App.rc = 1
+                                 return
+                             break
+                         else if(slash == ch):
+                             /* MARKER(("state 0 ==> 1 @ %d:%d\n", line, col)); */
+                             if( '\\'==prev ):
+                                 /**
+                                                JS regexes may contain slash-asterisks, as happened at:
 
-               https://github.com/emscripten-core/emscripten/issues/23412
+                                                https://github.com/emscripten-core/emscripten/issues/23412
 
-               Such regexes will always necessarily be preceded by a
-               backslash, though.
+                                                Such regexes will always necessarily be preceded by a
+                                                backslash, though.
 
-               It is hypothetically possible for a legitimate comment
-               slash-asterisk to appear immediately before a
-               backslash, but that seems like an even rarer corner
-               case than the JS regex case.
-            */
-            fputc(ch, out);
-          }else{
-            state = S_SLASH1;
-          }
-          break;
-        }
-        fputc(ch, out);
-        break;
-      case S_SLASH1: /* 1 slash */
-        /* MARKER(("SLASH1 @ %d:%d App.keepFirst=%d\n",
-           line, col, App.keepFirst)); */
-        switch(ch){
-          case '*':
-            /* Enter C comment */
-            if(App.keepFirst>0){
-              elide = 0;
-              --App.keepFirst;
-            }else{
-              elide = 1;
-            }
-            /*MARKER(("state 1 ==> 3 @ %d:%d\n", line, col));*/
-            state = S_C;
-            state3Col = col-1;
-            if(!elide){
-              fputc(prev, out);
-              fputc(ch, out);
-            }
-            break;
-          case '/':
-            /* Enter C++ comment */
-            if(App.keepFirst>0){
-              elide = 0;
-              --App.keepFirst;
-            }else{
-              elide = 1;
-            }
-            /*MARKER(("state 1 ==> 2 @ %d:%d\n", line, col));*/
-            state = S_CPP;
-            if(!elide){
-              fputc(prev, out);
-              fputc(ch, out);
-            }
-            break;
-          default:
-            /* It wasn't a comment after all. */
-            state = S_NONE;
-            if(!elide){
-              fputc(prev, out);
-              fputc(ch, out);
-            }
-        }
-        break;
-      case S_CPP: /* C++ comment */
-        if('\n' == ch){
-          /* MARKER(("state 2 ==> 0 @ %d:%d\n", line, col)); */
-          state = S_NONE;
-          elide = 0;
-        }
-        if(!elide){
-          fputc(ch, out);
-        }
-        break;
-      case S_C: /* C comment */
-        if(!elide){
-          fputc(ch, out);
-        }
-        if(slash == ch){
-          if(star == prev){
-            /* MARKER(("state 3 ==> 0 @ %d:%d\n", line, col)); */
-            /* Corner case which breaks this: */
-            /*/ <-- slash there */
-            /* That shows up twice in a piece of 3rd-party
-               code i use. */
-            /* And thus state3Col was introduced :/ */
-            if(col!=state3Col+2){
-              state = S_NONE;
-              elide = 0;
-              state3Col = -99;
-            }
-          }
-        }
-        break;
-      default:
-        assert(!"impossible!");
-        break;
-    }
-    if('\n' == ch){
-      ++line;
-      col = 0;
-      state3Col = -99;
-    }
-  }
-}
+                                                It is hypothetically possible for a legitimate comment
+                                                slash-asterisk to appear immediately before a
+                                                backslash, but that seems like an even rarer corner
+                                                case than the JS regex case.
+                                             */
+                                 fputc(ch, out)
+                             else:
+                                 state = S_SLASH1
+                             break
+                         fputc(ch, out)
+                         break
+                     case S_SLASH1: /* 1 slash */
+                         /* MARKER(("SLASH1 @ %d:%d App.keepFirst=%d\n",
+                                    line, col, App.keepFirst)); */
+                         switch(ch):
+                             case '*':
+                                 /* Enter C comment */
+                                 if(App.keepFirst>0):
+                                     elide = 0
+                                     --App.keepFirst
+                                 else:
+                                     elide = 1
+                                 /*MARKER(("state 1 ==> 3 @ %d:%d\n", line, col));*/
+                                 state = S_C
+                                 state3Col = col-1
+                                 if(!elide):
+                                     fputc(prev, out)
+                                     fputc(ch, out)
+                                 break
+                             case '/':
+                                 /* Enter C++ comment */
+                                 if(App.keepFirst>0):
+                                     elide = 0
+                                     --App.keepFirst
+                                 else:
+                                     elide = 1
+                                 /*MARKER(("state 1 ==> 2 @ %d:%d\n", line, col));*/
+                                 state = S_CPP
+                                 if(!elide):
+                                     fputc(prev, out)
+                                     fputc(ch, out)
+                                 break
+                             default:
+                                 /* It wasn't a comment after all. */
+                                 state = S_NONE
+                                 if(!elide):
+                                     fputc(prev, out)
+                                     fputc(ch, out)
+                         break
+                     case S_CPP: /* C++ comment */
+                         if('\n' == ch):
+                             /* MARKER(("state 2 ==> 0 @ %d:%d\n", line, col)); */
+                             state = S_NONE
+                             elide = 0
+                         if(!elide):
+                             fputc(ch, out)
+                         break
+                     case S_C: /* C comment */
+                         if(!elide):
+                             fputc(ch, out)
+                         if(slash == ch):
+                             if(star == prev):
+                                 /* MARKER(("state 3 ==> 0 @ %d:%d\n", line, col)); */
+                                 /* Corner case which breaks this: */
+                                 /*/ <-- slash there */
+                                 /* That shows up twice in a piece of 3rd-party
+                                                code i use. */
+                                 /* And thus state3Col was introduced :/ */
+                                 if(col!=state3Col+2):
+                                     state = S_NONE
+                                     elide = 0
+                                     state3Col = -99
+                         break
+                     default:
+                         assert(!"impossible!")
+                         break
+                 if('\n' == ch):
+                     ++line
+                     col = 0
+                     state3Col = -99
 
-static void usage(char const *zAppName){
-  fprintf(stderr, "Strips C- and C++-style comments from stdin and sends "
-          "the results to stdout.\n");
-  fprintf(stderr, "Usage: %s [--keep-first|-k] < input > output\n", zAppName);
-}
+static void usage(char const *zAppName):
+    fprintf(stderr, "Strips C- and C++-style comments from stdin and sends "
+          "the results to stdout.\n")
+    fprintf(stderr, "Usage: %s [--keep-first|-k] < input > output\n", zAppName)
 
-int main( int argc, char const * const * argv ){
-  int i;
-  for(i = 1; i < argc; ++i){
-    char const * zArg = argv[i];
-    while( '-'==*zArg ) ++zArg;
-    if( 0==strcmp(zArg,"k")
-        || 0==strcmp(zArg,"keep-first") ){
-      ++App.keepFirst;
-    }else{
-      usage(argv[0]);
-      return 1;
-    }
-  }
-  App.input = stdin;
-  App.output = stdout;
-  do_it_all();
-  return App.rc ? 1 : 0;
-}
+int main( int argc, char const * const * argv ):
+    int i
+    for(i = 1; i < argc; ++i):
+        char const * zArg = argv[i]
+        while( '-'==*zArg ):
+            ++zArg
+        if( 0==strcmp(zArg,"k")
+                || 0==strcmp(zArg,"keep-first") ):
+                    ++App.keepFirst
+        else:
+            usage(argv[0])
+            return 1
+    App.input = stdin
+    App.output = stdout
+    do_it_all()
+    return App.rc ? 1 : 0

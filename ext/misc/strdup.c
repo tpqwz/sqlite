@@ -56,9 +56,8 @@ SQLITE_EXTENSION_INIT1
 ** No-op wrapper around free() to work around problems with non-CDECL
 ** calling conventions on 32-bit Windows builds.
 */
-static void strdupFree(void *p){
-  free(p);
-}
+static void strdupFree(void *p):
+    free(p)
 
 /*
 ** Make a copy of a string or BLOB in memory obtained from malloc().
@@ -67,51 +66,49 @@ static void strdupfunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  const unsigned char *zIn;
-  int nIn;
-  unsigned char *zOut;
+):
+    const unsigned char *zIn
+    int nIn
+    unsigned char *zOut
 
-  assert( argc==1 );
-  if( sqlite3_value_type(argv[0])==SQLITE_NULL ) return;
-  if( sqlite3_value_type(argv[0])==SQLITE_BLOB ){
-    zIn = (const unsigned char*)sqlite3_value_blob(argv[0]);
-    nIn = sqlite3_value_bytes(argv[0]);
-    zOut = malloc( nIn==0 ? 1 : nIn );
-    if( zOut==0 ){
-      sqlite3_result_error_nomem(context);
-      return;
-    }
-    if( nIn>0 ) memcpy(zOut, zIn, nIn);
-    sqlite3_result_blob(context, zOut, nIn, strdupFree);
-  }else{
-    zIn = (const unsigned char*)sqlite3_value_text(argv[0]);
-    if( zIn==0 ) return;
-    nIn = (int)strlen((char*)zIn);
-    zOut = malloc( nIn+1 );
-    if( zOut==0 ){
-      sqlite3_result_error_nomem(context);
-      return;
-    }
-    memcpy(zOut, zIn, nIn);
-    zOut[nIn] = 0;
-    sqlite3_result_text64(context, (char*)zOut, nIn, strdupFree,
-                          SQLITE_UTF8_ZT);
-  }
-}
+    assert( argc==1 )
+    if( sqlite3_value_type(argv[0])==SQLITE_NULL ):
+        return
+    if( sqlite3_value_type(argv[0])==SQLITE_BLOB ):
+        zIn = (const unsigned char*)sqlite3_value_blob(argv[0])
+        nIn = sqlite3_value_bytes(argv[0])
+        zOut = malloc( nIn==0 ? 1 : nIn )
+        if( zOut==0 ):
+            sqlite3_result_error_nomem(context)
+            return
+        if( nIn>0 ):
+            memcpy(zOut, zIn, nIn)
+        sqlite3_result_blob(context, zOut, nIn, strdupFree)
+    else:
+        zIn = (const unsigned char*)sqlite3_value_text(argv[0])
+        if( zIn==0 ):
+            return
+        nIn = (int)strlen((char*)zIn)
+        zOut = malloc( nIn+1 )
+        if( zOut==0 ):
+            sqlite3_result_error_nomem(context)
+            return
+        memcpy(zOut, zIn, nIn)
+        zOut[nIn] = 0
+        sqlite3_result_text64(context, (char*)zOut, nIn, strdupFree,
+                          SQLITE_UTF8_ZT)
 
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
 int sqlite3_strdup_init(
-  sqlite3 *db, 
-  char **pzErrMsg, 
+  sqlite3 *db,
+  char **pzErrMsg,
   const sqlite3_api_routines *pApi
-){
-  int rc = SQLITE_OK;
-  SQLITE_EXTENSION_INIT2(pApi);
-  (void)pzErrMsg;  /* Unused parameter */
-  rc = sqlite3_create_function(db, "strdup", 1, SQLITE_UTF8,
-                   0, strdupfunc, 0, 0);
-  return rc;
-}
+):
+    int rc = SQLITE_OK
+    SQLITE_EXTENSION_INIT2(pApi)
+    (void)pzErrMsg /* Unused parameter */
+    rc = sqlite3_create_function(db, "strdup", 1, SQLITE_UTF8,
+                   0, strdupfunc, 0, 0)
+    return rc

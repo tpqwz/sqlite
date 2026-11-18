@@ -45,7 +45,6 @@ int sqlite3_rtree_geometry_callback(
   void *pContext
 );
 
-
 /*
 ** A pointer to a structure of the following type is passed as the first
 ** argument to callbacks registered using rtree_geometry_callback().
@@ -59,7 +58,7 @@ struct sqlite3_rtree_geometry {
 };
 
 /*
-** Register a 2nd-generation geometry callback named zScore that can be 
+** Register a 2nd-generation geometry callback named zScore that can be
 ** used as part of an R-Tree geometry query as follows:
 **
 **   SELECT ... FROM <rtree> WHERE <rtree col> MATCH $zQueryFunc(... params ...)
@@ -72,9 +71,8 @@ int sqlite3_rtree_query_callback(
   void (*xDestructor)(void*)
 );
 
-
 /*
-** A pointer to a structure of the following type is passed as the 
+** A pointer to a structure of the following type is passed as the
 ** argument to scored geometry callback registered using
 ** sqlite3_rtree_query_callback().
 **
@@ -109,9 +107,9 @@ struct sqlite3_rtree_query_info {
 #define PARTLY_WITHIN    1   /* Object partially overlaps query region */
 #define FULLY_WITHIN     2   /* Object fully contained within query region */
 
-
 #ifdef __cplusplus
-}  /* end of the 'extern "C"' block */
+}
+/* end of the 'extern "C"' block */
 #endif
 
 #endif  /* ifndef _SQLITE3RTREE_H_ */

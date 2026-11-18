@@ -46,27 +46,26 @@ static void rememberFunc(
   sqlite3_context *pCtx,
   int argc,
   sqlite3_value **argv
-){
-  sqlite3_int64 v;
-  sqlite3_int64 *ptr;
-  assert( argc==2 );
-  v = sqlite3_value_int64(argv[0]);
-  ptr = sqlite3_value_pointer(argv[1], "carray");
-  if( ptr ) *ptr = v;
-  sqlite3_result_int64(pCtx, v);
-}
+):
+    sqlite3_int64 v
+    sqlite3_int64 *ptr
+    assert( argc==2 )
+    v = sqlite3_value_int64(argv[0])
+    ptr = sqlite3_value_pointer(argv[1], "carray")
+    if( ptr ):
+        *ptr = v
+    sqlite3_result_int64(pCtx, v)
 
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
 int sqlite3_remember_init(
-  sqlite3 *db, 
-  char **pzErrMsg, 
+  sqlite3 *db,
+  char **pzErrMsg,
   const sqlite3_api_routines *pApi
-){
-  int rc = SQLITE_OK;
-  SQLITE_EXTENSION_INIT2(pApi);
-  rc = sqlite3_create_function(db, "remember", 2, SQLITE_UTF8, 0,
-                               rememberFunc, 0, 0);
-  return rc;
-}
+):
+    int rc = SQLITE_OK
+    SQLITE_EXTENSION_INIT2(pApi)
+    rc = sqlite3_create_function(db, "remember", 2, SQLITE_UTF8, 0,
+                               rememberFunc, 0, 0)
+    return rc

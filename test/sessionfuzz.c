@@ -68,7 +68,7 @@
 #include "sqlite3.c"
 
 /* Code to populate the database */
-static const char zFillSql[] = 
+static const char zFillSql[] =
   "INSERT INTO t1(a,b,c,d) VALUES\n"
   "  (1,2,3,4),\n"
   "  (2,3.5,'four',x'556677'),\n"
@@ -81,7 +81,6 @@ static const char zFillSql[] =
   "INSERT INTO t2 SELECT printf('x%dy',a),b,c FROM t1;\n"
   "INSERT INTO t3 SELECT a*1.1,b,c FROM t1;\n"
   "INSERT INTO t4 SELECT a||','||quote(b) FROM t1;\n"
-;
 
 /* A database file created by running the two scripts above */
 static const unsigned char aDbBytes[] = {
@@ -678,7 +677,7 @@ static const unsigned char aDbBytes[] = {
   50, 44, 48, 46, 48,  7,  2, 23, 53, 49, 44, 49, 53, 14,  2, 37, 53, 48, 44,
   88, 39, 53, 53, 54, 54, 55, 55, 39,  5,  2, 19, 53, 44, 51,  6,  2, 21, 52,
   57, 44, 52, 12,  2, 33, 52, 56, 44, 39, 98,117, 98, 98, 97, 39,
-};
+}
 
 /* Help message */
 static const char zHelp[] =
@@ -686,7 +685,6 @@ static const char zHelp[] =
   "  sessionfuzz setup          -- Generate seed files c1.txt, c2.txt, etc.\n"
   "  sessionfuzz run FILE ...   -- Run against fuzzed changeset FILE\n"
   "  sessionfuzz run SQLAR ...  -- Run against all files in the SQL Archive\n"
-;
 
 #include <stdio.h>
 #include <string.h>
@@ -709,115 +707,100 @@ static void sqlarUncompressFunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-#ifdef OMIT_ZLIB
-  sqlite3_result_value(context, argv[0]);
-#else
-  uLong nData;
-  uLongf sz;
+):
+    #ifdef OMIT_ZLIB
+    sqlite3_result_value(context, argv[0])
+    #else
+    uLong nData
+    uLongf sz
 
-  assert( argc==2 );
-  sz = sqlite3_value_int(argv[1]);
+    assert( argc==2 )
+    sz = sqlite3_value_int(argv[1])
 
-  if( sz<=0 || sz==(nData = sqlite3_value_bytes(argv[0])) ){
-    sqlite3_result_value(context, argv[0]);
-  }else{
-    const Bytef *pData= sqlite3_value_blob(argv[0]);
-    Bytef *pOut = sqlite3_malloc(sz);
-    if( Z_OK!=uncompress(pOut, &sz, pData, nData) ){
-      sqlite3_result_error(context, "error in uncompress()", -1);
-    }else{
-      sqlite3_result_blob(context, pOut, sz, SQLITE_TRANSIENT);
-    }
-    sqlite3_free(pOut);
-  }
-#endif
-}
-
+    if( sz<=0 || sz==(nData = sqlite3_value_bytes(argv[0])) ):
+        sqlite3_result_value(context, argv[0])
+    else:
+        const Bytef *pData= sqlite3_value_blob(argv[0])
+        Bytef *pOut = sqlite3_malloc(sz)
+        if( Z_OK!=uncompress(pOut, &sz, pData, nData) ):
+            sqlite3_result_error(context, "error in uncompress()", -1)
+        else:
+            sqlite3_result_blob(context, pOut, sz, SQLITE_TRANSIENT)
+        sqlite3_free(pOut)
+    #endif
 
 /* Run a chunk of SQL.  If any errors happen, print an error message
 ** and exit.
 */
-static void runSql(sqlite3 *db, const char *zSql){
-  int rc;
-  char *zErr = 0;
-  rc = sqlite3_exec(db, zSql, 0, 0, &zErr);
-  if( rc || zErr ){
-    fprintf(stderr, "SQL failed: rc=%d zErr=[%s]\n", rc, zErr);
-    fprintf(stderr, "SQL: [%s]\n", zSql);
-    exit(1);
-  }
-}
+static void runSql(sqlite3 *db, const char *zSql):
+    int rc
+    char *zErr = 0
+    rc = sqlite3_exec(db, zSql, 0, 0, &zErr)
+    if( rc || zErr ):
+        fprintf(stderr, "SQL failed: rc=%d zErr=[%s]\n", rc, zErr)
+        fprintf(stderr, "SQL: [%s]\n", zSql)
+        exit(1)
 
 /*
 ** Write buffer to disk
 */
-static void writeFile(const char *zFilename, const void *pData, int nData){
-  FILE *out;
-  int n;
-  out = fopen(zFilename, "wb");
-  if( out==0 ){
-    fprintf(stderr, "cannot open \"%s\" for writing\n", zFilename);
-    exit(1);
-  }
-  n = (int)fwrite(pData, 1, nData, out);
-  fclose(out);
-  if( n!=nData ){
-    fprintf(stderr, "only wrote %d of %d bytes to \"%s\"\n",n,nData,zFilename);
-    exit(1);
-  }
-}
+static void writeFile(const char *zFilename, const void *pData, int nData):
+    FILE *out
+    int n
+    out = fopen(zFilename, "wb")
+    if( out==0 ):
+        fprintf(stderr, "cannot open \"%s\" for writing\n", zFilename)
+        exit(1)
+    n = (int)fwrite(pData, 1, nData, out)
+    fclose(out)
+    if( n!=nData ):
+        fprintf(stderr, "only wrote %d of %d bytes to \"%s\"\n",n,nData,zFilename)
+        exit(1)
 
 /*
 ** Generate a changeset from session pSess and write it to zFile
 */
-static void makeChangeset(const char *zFile, sqlite3_session *pSess){
-  void *pChg;
-  int nChg;
-  int rc;
-  rc = sqlite3session_changeset(pSess, &nChg, &pChg);
-  if( rc ){
-    fprintf(stderr, "sqlite3session_changeset() returned %d\n", rc);
-    exit(1);
-  }
-  writeFile(zFile, pChg, nChg);
-  sqlite3_free(pChg);
-}
+static void makeChangeset(const char *zFile, sqlite3_session *pSess):
+    void *pChg
+    int nChg
+    int rc
+    rc = sqlite3session_changeset(pSess, &nChg, &pChg)
+    if( rc ):
+        fprintf(stderr, "sqlite3session_changeset() returned %d\n", rc)
+        exit(1)
+    writeFile(zFile, pChg, nChg)
+    sqlite3_free(pChg)
 
 /*
 ** Read a file from disk.  Space to hold the answer is obtained from
 ** sqlite3_malloc64().
 */
-static void readFile(const char *zName, void **ppData, int *pnData){
-  FILE *in = fopen(zName, "rb");
-  long nIn;
-  size_t nRead;
-  char *pBuf;
-  *ppData = 0;
-  *pnData = 0;
-  if( in==0 ){
-    fprintf(stderr, "Cannot open \"%s\" for reading\n", zName);
-    exit(1);
-  }
-  fseek(in, 0, SEEK_END);
-  nIn = ftell(in);
-  rewind(in);
-  pBuf = sqlite3_malloc64( nIn+1 );
-  if( pBuf==0 ){
-    fprintf(stderr, "Failed to malloc %lld bytes\n", (sqlite3_int64)(nIn+1));
-    exit(1);
-  }
-  nRead = fread(pBuf, 1, nIn, in);
-  fclose(in);
-  if( nRead!=(size_t)nIn ){
-    fprintf(stderr, "Read only %d of %d bytes from %s\n", (int)nRead, (int)nIn,
-                    zName);
-    exit(1);
-  }
-  pBuf[nIn] = 0;
-  *pnData = nIn;
-  *ppData = pBuf;
-}
+static void readFile(const char *zName, void **ppData, int *pnData):
+    FILE *in = fopen(zName, "rb")
+    long nIn
+    size_t nRead
+    char *pBuf
+    *ppData = 0
+    *pnData = 0
+    if( in==0 ):
+        fprintf(stderr, "Cannot open \"%s\" for reading\n", zName)
+        exit(1)
+    fseek(in, 0, SEEK_END)
+    nIn = ftell(in)
+    rewind(in)
+    pBuf = sqlite3_malloc64( nIn+1 )
+    if( pBuf==0 ):
+        fprintf(stderr, "Failed to malloc %lld bytes\n", (sqlite3_int64)(nIn+1))
+        exit(1)
+    nRead = fread(pBuf, 1, nIn, in)
+    fclose(in)
+    if( nRead!=(size_t)nIn ):
+        fprintf(stderr, "Read only %d of %d bytes from %s\n", (int)nRead, (int)nIn,
+                    zName)
+        exit(1)
+    pBuf[nIn] = 0
+    *pnData = nIn
+    *ppData = pBuf
 
 /*
 ** The conflict callback
@@ -826,195 +809,173 @@ static int conflictCall(
   void *NotUsed,
   int eConflict,
   sqlite3_changeset_iter *p
-){
-  (void)NotUsed;
-  (void)p;
-  return SQLITE_CHANGESET_OMIT;
-}
+):
+    (void)NotUsed
+    (void)p
+    return SQLITE_CHANGESET_OMIT
 
 /*
 ** Reset the database file
 */
-static void db_reset(sqlite3 *db){
-  unsigned char *pData;
-  int nData;
-  int rc;
+static void db_reset(sqlite3 *db):
+    unsigned char *pData
+    int nData
+    int rc
 
-  nData = sizeof(aDbBytes);
-  pData = sqlite3_malloc64( nData );
-  if( pData==0 ){
-    fprintf(stderr, "could not allocate %d bytes\n", nData);
-    exit(1);
-  }
-  memcpy(pData, aDbBytes, nData);
-  rc = sqlite3_deserialize(db, 0, pData, nData, nData,
-     SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE);
-  if( rc ){
-    fprintf(stderr, "sqlite3_deserialize() failed with %d: %s\n",
-            rc, sqlite3_errmsg(db));
-    exit(1);
-  }
-}
+    nData = sizeof(aDbBytes)
+    pData = sqlite3_malloc64( nData )
+    if( pData==0 ):
+        fprintf(stderr, "could not allocate %d bytes\n", nData)
+        exit(1)
+    memcpy(pData, aDbBytes, nData)
+    rc = sqlite3_deserialize(db, 0, pData, nData, nData,
+     SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE)
+    if( rc ):
+        fprintf(stderr, "sqlite3_deserialize() failed with %d: %s\n",
+            rc, sqlite3_errmsg(db))
+        exit(1)
 
 /*
 ** Given a full file pathname, return a pointer to the tail.
 ** Example:
-** 
+**
 **   input:    /home/drh/sqlite/abc.db
 **   output:   abc.db
 */
-static const char *fileTail(const char *z){
-  const char *zOut = z;
-  while( z[0] ){
-    if( z[0]=='/' && z[1]!=0 ) zOut = &z[1];
-    z++;
-  }
-  return zOut;
-}
+static const char *fileTail(const char *z):
+    const char *zOut = z
+    while( z[0] ):
+        if( z[0]=='/' && z[1]!=0 ):
+            zOut = &z[1]
+        z++
+    return zOut
 
-int main(int argc, char **argv){
-  const char *zCmd;
-  sqlite3 *db;
-  int rc;
-  sqlite3_session *pSess;
-  sqlite3_stmt *pStmt;
-  void *pChgset;
-  int nChgset;
-  int bVerbose = 0;
+int main(int argc, char **argv):
+    const char *zCmd
+    sqlite3 *db
+    int rc
+    sqlite3_session *pSess
+    sqlite3_stmt *pStmt
+    void *pChgset
+    int nChgset
+    int bVerbose = 0
 
-#ifdef SQLITE_OMIT_AUTOINIT
-  sqlite3_initialize();
-#endif
+    #ifdef SQLITE_OMIT_AUTOINIT
+    sqlite3_initialize()
+    #endif
 
-  if( argc<2 ){
-    fprintf(stderr, "%s", zHelp);
-    exit(1);
-  }
-  rc = sqlite3_open_v2(":memory:",&db,
-                       SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, "memdb");
-  if( rc ){
-    fprintf(stderr, "Failed to open :memory: database: %s\n",
-            sqlite3_errmsg(db));
-    exit(1);
-  }
-  db_reset(db);
-  zCmd = argv[1];
-  if( strcmp(zCmd, "setup")==0 ){
-    if( argc!=2 ){
-      fprintf(stdout, "Wrong number of arguments.\n%s", zHelp);
-      exit(1);
-    }
-    runSql(db, zFillSql);
-    rc = sqlite3session_create(db, "main", &pSess);
-    if( rc ){
-      fprintf(stderr, "sqlite3session_create() returns %d\n", rc);
-      exit(1);
-    }
-    rc = sqlite3session_attach(pSess, 0);
-    if( rc ){
-      fprintf(stderr, "sqlite3session_attach(db,0) returns %d\n", rc);
-      exit(1);
-    }
-    runSql(db, "INSERT INTO t4(z) VALUES('');");
-    makeChangeset("c1.txt", pSess);
-    runSql(db, 
-      "UPDATE t1 SET b=c, c=b WHERE a IN (5,7);\n"
-      "DELETE FROM t2 WHERE rowid IN (8,2);\n"
-      "INSERT OR IGNORE INTO t4 SELECT b FROM t1 WHERE b IS TRUE LIMIT 2;");
-    makeChangeset("c2.txt", pSess);
-    runSql(db, "UPDATE t3 SET x=y, y=NULL WHERE rowid IN (1,3);");
-    makeChangeset("c3.txt", pSess);
-    sqlite3session_delete(pSess);
-  }else
-  if( strcmp(zCmd, "run")==0 ){
-    int i;
-    if( argc<3 ){
-      fprintf(stdout, "Wrong number of arguments.\n%s", zHelp);
-      exit(1);
-    }
-    for(i=2; i<argc; i++){
-      if( strcmp(argv[i],"-v")==0 ){
-        bVerbose = 1;
-        continue;
-      }
-      readFile(argv[i], &pChgset, &nChgset);
-      if( nChgset >= 512 
-       && memcmp(pChgset, "SQLite format 3", 16)==0 
-      ){
-        sqlite3 *db2;
-        sqlite3_stmt *pStmt2;
-        int nCase = 0;
-        /* This file is an SQL Archive containing many changesets */
-        if( !bVerbose ){ printf("%s: ", fileTail(argv[i])); fflush(stdout); }
-        sqlite3_open_v2(":memory:", &db2, 
-                        SQLITE_OPEN_CREATE|SQLITE_OPEN_READWRITE, "memdb");
-        sqlite3_deserialize(db2, 0, pChgset, nChgset, nChgset,
-              SQLITE_DESERIALIZE_READONLY | SQLITE_DESERIALIZE_FREEONCLOSE);
-        sqlite3_create_function(db2, "sqlar_uncompress", 2, SQLITE_UTF8, 0,
-                                 sqlarUncompressFunc, 0, 0);        
-        rc = sqlite3_prepare_v2(db2, "SELECT name, sqlar_uncompress(data,sz)"
-                                     "  FROM sqlar", -1, &pStmt2, 0);
-        if( rc ){
-          fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db2));
-          exit(1);
-        }
-        while( SQLITE_ROW==sqlite3_step(pStmt2) ){
-          if( bVerbose ){
-            printf("%s/%s:", fileTail(argv[i]), sqlite3_column_text(pStmt2,0));
-            fflush(stdout);
-          }
-          runSql(db, "BEGIN");
-          pChgset = (unsigned char*)sqlite3_column_blob(pStmt2, 1);
-          nChgset = sqlite3_column_bytes(pStmt2, 1);
-          rc = sqlite3changeset_apply(db, nChgset, pChgset, 0, conflictCall, 0);
-          if( bVerbose ){
-            printf(" Ok.  rc=%d\n", rc);
-            fflush(stdout);
-          }
-          runSql(db, "ROLLBACK");
-          nCase++;
-        }
-        sqlite3_finalize(pStmt2);
-        sqlite3_close(db2);
-        if( bVerbose ) printf("%s: ", fileTail(argv[i]));
-        printf(" %d cases, 0 crashes\n", nCase);
-        fflush(stdout);
-      }else{
-        /* The named file is just an ordinary changeset */
-        printf("%s:", fileTail(argv[i]));
-        fflush(stdout);
-        runSql(db, "BEGIN");
-        rc = sqlite3changeset_apply(db, nChgset, pChgset, 0, conflictCall, 0);
-        printf(" %d\n", rc);
-        fflush(stdout);
-        runSql(db, "ROLLBACK");
-        sqlite3_free(pChgset);
-      }
-    }
-  }else
-  {
-    fprintf(stderr, "%s", zHelp);
-    exit(1);
-  }
-  rc = sqlite3_prepare_v2(db, "PRAGMA integrity_check;", -1, &pStmt, 0);
-  if( rc ){
-    fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
-    exit(1);
-  }
-  if( sqlite3_step(pStmt)!=SQLITE_ROW
-   || strcmp((const char*)sqlite3_column_text(pStmt,0),"ok")!=0
-  ){
-    fprintf(stderr, "Integrity check failed!\n");
-    do{
-      fprintf(stderr, "%s\n", sqlite3_column_text(pStmt,0));
-    }while( sqlite3_step(pStmt)==SQLITE_ROW );
-  }
-  sqlite3_finalize(pStmt);
-  sqlite3_close(db);
-  if( sqlite3_memory_used()>0 ){
-    fprintf(stderr, "memory leak of %lld bytes\n",
-         sqlite3_memory_used());
-    exit(1);
-  }
-  return 0;
-}
+    if( argc<2 ):
+        fprintf(stderr, "%s", zHelp)
+        exit(1)
+    rc = sqlite3_open_v2(":memory:",&db,
+                       SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, "memdb")
+    if( rc ):
+        fprintf(stderr, "Failed to open :memory: database: %s\n",
+            sqlite3_errmsg(db))
+        exit(1)
+    db_reset(db)
+    zCmd = argv[1]
+    if( strcmp(zCmd, "setup")==0 ):
+        if( argc!=2 ):
+            fprintf(stdout, "Wrong number of arguments.\n%s", zHelp)
+            exit(1)
+        runSql(db, zFillSql)
+        rc = sqlite3session_create(db, "main", &pSess)
+        if( rc ):
+            fprintf(stderr, "sqlite3session_create() returns %d\n", rc)
+            exit(1)
+        rc = sqlite3session_attach(pSess, 0)
+        if( rc ):
+            fprintf(stderr, "sqlite3session_attach(db,0) returns %d\n", rc)
+            exit(1)
+        runSql(db, "INSERT INTO t4(z) VALUES('');")
+        makeChangeset("c1.txt", pSess)
+        runSql(db,
+        "UPDATE t1 SET b=c, c=b WHERE a IN (5,7);\n"
+        "DELETE FROM t2 WHERE rowid IN (8,2);\n"
+        "INSERT OR IGNORE INTO t4 SELECT b FROM t1 WHERE b IS TRUE LIMIT 2;")
+        makeChangeset("c2.txt", pSess)
+        runSql(db, "UPDATE t3 SET x=y, y=NULL WHERE rowid IN (1,3);")
+        makeChangeset("c3.txt", pSess)
+        sqlite3session_delete(pSess)
+    else if( strcmp(zCmd, "run")==0 ):
+        int i
+        if( argc<3 ):
+            fprintf(stdout, "Wrong number of arguments.\n%s", zHelp)
+            exit(1)
+        for(i=2; i<argc; i++):
+            if( strcmp(argv[i],"-v")==0 ):
+                bVerbose = 1
+                continue
+            readFile(argv[i], &pChgset, &nChgset)
+            if( nChgset >= 512
+                   && memcmp(pChgset, "SQLite format 3", 16)==0
+                  ):
+                      sqlite3 *db2
+                      sqlite3_stmt *pStmt2
+                      int nCase = 0
+                      /* This file is an SQL Archive containing many changesets */
+                      if( !bVerbose ):
+                          printf("%s: ", fileTail(argv[i]))
+                          fflush(stdout)
+                      sqlite3_open_v2(":memory:", &db2,
+                        SQLITE_OPEN_CREATE|SQLITE_OPEN_READWRITE, "memdb")
+                      sqlite3_deserialize(db2, 0, pChgset, nChgset, nChgset,
+                      SQLITE_DESERIALIZE_READONLY | SQLITE_DESERIALIZE_FREEONCLOSE)
+                      sqlite3_create_function(db2, "sqlar_uncompress", 2, SQLITE_UTF8, 0,
+                                 sqlarUncompressFunc, 0, 0)
+                      rc = sqlite3_prepare_v2(db2, "SELECT name, sqlar_uncompress(data,sz)"
+                                     "  FROM sqlar", -1, &pStmt2, 0)
+                      if( rc ):
+                          fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db2))
+                          exit(1)
+                      while( SQLITE_ROW==sqlite3_step(pStmt2) ):
+                          if( bVerbose ):
+                              printf("%s/%s:", fileTail(argv[i]), sqlite3_column_text(pStmt2,0))
+                              fflush(stdout)
+                          runSql(db, "BEGIN")
+                          pChgset = (unsigned char*)sqlite3_column_blob(pStmt2, 1)
+                          nChgset = sqlite3_column_bytes(pStmt2, 1)
+                          rc = sqlite3changeset_apply(db, nChgset, pChgset, 0, conflictCall, 0)
+                          if( bVerbose ):
+                              printf(" Ok.  rc=%d\n", rc)
+                              fflush(stdout)
+                          runSql(db, "ROLLBACK")
+                          nCase++
+                      sqlite3_finalize(pStmt2)
+                      sqlite3_close(db2)
+                      if( bVerbose ):
+                          printf("%s: ", fileTail(argv[i]))
+                      printf(" %d cases, 0 crashes\n", nCase)
+                      fflush(stdout)
+            else:
+                /* The named file is just an ordinary changeset */
+                printf("%s:", fileTail(argv[i]))
+                fflush(stdout)
+                runSql(db, "BEGIN")
+                rc = sqlite3changeset_apply(db, nChgset, pChgset, 0, conflictCall, 0)
+                printf(" %d\n", rc)
+                fflush(stdout)
+                runSql(db, "ROLLBACK")
+                sqlite3_free(pChgset)
+    else:
+        fprintf(stderr, "%s", zHelp)
+        exit(1)
+    rc = sqlite3_prepare_v2(db, "PRAGMA integrity_check;", -1, &pStmt, 0)
+    if( rc ):
+        fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db))
+        exit(1)
+    if( sqlite3_step(pStmt)!=SQLITE_ROW
+       || strcmp((const char*)sqlite3_column_text(pStmt,0),"ok")!=0
+      ):
+        fprintf(stderr, "Integrity check failed!\n")
+        do:
+            fprintf(stderr, "%s\n", sqlite3_column_text(pStmt,0))
+        while( sqlite3_step(pStmt)==SQLITE_ROW )
+    sqlite3_finalize(pStmt)
+    sqlite3_close(db)
+    if( sqlite3_memory_used()>0 ):
+        fprintf(stderr, "memory leak of %lld bytes\n",
+         sqlite3_memory_used())
+        exit(1)
+    return 0

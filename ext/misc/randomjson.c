@@ -32,29 +32,27 @@
 #  include "sqlite3.h"
 #else
 #  include "sqlite3ext.h"
-   SQLITE_EXTENSION_INIT1
+SQLITE_EXTENSION_INIT1
 #endif
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 
 /* Pseudo-random number generator */
-typedef struct Prng {
-  unsigned int x, y;
-} Prng;
+typedef struct Prng:
+    unsigned int x, y
+Prng
 
 /* Reseed the PRNG */
-static void prngSeed(Prng *p, unsigned int iSeed){
-  p->x = iSeed | 1;
-  p->y = iSeed;
-}
+static void prngSeed(Prng *p, unsigned int iSeed):
+    p->x = iSeed | 1
+    p->y = iSeed
 
 /* Extract a random number */
-static unsigned int prngInt(Prng *p){
-  p->x = (p->x>>1) ^ ((1+~(p->x&1)) & 0xd0000001);
-  p->y = p->y*1103515245 + 12345;
-  return p->x ^ p->y;
-}
+static unsigned int prngInt(Prng *p):
+    p->x = (p->x>>1) ^ ((1+~(p->x&1)) & 0xd0000001)
+    p->y = p->y*1103515245 + 12345
+    return p->x ^ p->y
 
 static char *azJsonAtoms[] = {
   /* JSON                    JSON-5 */
@@ -100,7 +98,7 @@ static char *azJsonAtoms[] = {
   "\"\\u00XX\\u00XX\"",      "\"\\xXX\\xXX\"",
   "\"y\\uXXXXz\"",           "\"y\\uXXXXz\"",
   "\"\"",                    "\"\"",
-};
+}
 static char *azJsonTemplate[] = {
   /* JSON                                      JSON-5 */
   "{\"a\":%,\"b\":%,\"cDD\":%}",               "{a:%,b:%,cDD:%}",
@@ -117,7 +115,7 @@ static char *azJsonTemplate[] = {
   "[%,%,%]",                                   "[%,%,%,]",
   "[%,%,%,%]",                                 "[%,%,%,%]",
   "[%,%,%,%,%]",                               "[%,%,%,%,%]",
-};
+}
 
 #define count(X)  (sizeof(X)/sizeof(X[0]))
 
@@ -129,112 +127,109 @@ static void jsonExpand(
   Prng *p,
   int eType,            /* 0 for JSON, 1 for JSON5 */
   unsigned int r        /* Growth probability 0..1000.  0 means no growth */
-){
-  unsigned int i, j, k;
-  char *z;
-  char *zX;
-  size_t n;
-  char zBuf[200];
+):
+    unsigned int i, j, k
+    char *z
+    char *zX
+    size_t n
+    char zBuf[200]
 
-  j = 0;
-  if( zSrc==0 ) zSrc = "%";
-  if( strlen(zSrc)>=STRSZ/10 ) r = 0;
-  for(i=0; zSrc[i]; i++){
-    if( zSrc[i]!='%' ){
-      if( j<STRSZ ) zDest[j++] = zSrc[i];
-      continue;
-    }
-    if( r==0 || (r<1000 && (prngInt(p)%1000)<=r) ){
-      /* Fill in without values without any new % */
-      k = prngInt(p)%(count(azJsonAtoms)/2);
-      k = k*2 + eType;
-      z = azJsonAtoms[k];
-    }else{
-      /* Add new % terms */
-      k = prngInt(p)%(count(azJsonTemplate)/2);
-      k = k*2 + eType;
-      z = azJsonTemplate[k];
-    }
-    n = strlen(z);
-    if( (zX = strstr(z,"XX"))!=0 ){
-      unsigned int y = prngInt(p);
-      if( (y&0xff)==((y>>8)&0xff) ) y += 0x100;
-      while( (y&0xff)==((y>>16)&0xff) || ((y>>8)&0xff)==((y>>16)&0xff) ){
-        y += 0x10000;
-      }
-      memcpy(zBuf, z, n+1);
-      z = zBuf;
-      zX = strstr(z,"XX");
-      while( zX!=0 ){
-        zX[0] = "0123456789abcdef"[y%16];  y /= 16;
-        zX[1] = "0123456789abcdef"[y%16];  y /= 16;
-        zX = strstr(zX, "XX");
-      }
-    }else if( (zX = strstr(z,"DD"))!=0 ){
-      unsigned int y = prngInt(p);
-      memcpy(zBuf, z, n+1);
-      z = zBuf;
-      zX = strstr(z,"DD");
-      while( zX!=0 ){
-        zX[0] = "0123456789"[y%10];  y /= 10;
-        zX[1] = "0123456789"[y%10];  y /= 10;
-        zX = strstr(zX, "DD");
-      }
-    }
-    assert( strstr(z, "XX")==0 );
-    assert( strstr(z, "DD")==0 );
-    if( j+n<STRSZ ){
-      memcpy(&zDest[j], z, n);
-      j += (int)n;
-    }
-  }
-  zDest[STRSZ-1] = 0;
-  if( j<STRSZ ) zDest[j] = 0;
-}
+    j = 0
+    if( zSrc==0 ):
+        zSrc = "%"
+    if( strlen(zSrc)>=STRSZ/10 ):
+        r = 0
+    for(i=0; zSrc[i]; i++):
+        if( zSrc[i]!='%' ):
+            if( j<STRSZ ):
+                zDest[j++] = zSrc[i]
+            continue
+        if( r==0 || (r<1000 && (prngInt(p)%1000)<=r) ):
+            /* Fill in without values without any new % */
+            k = prngInt(p)%(count(azJsonAtoms)/2)
+            k = k*2 + eType
+            z = azJsonAtoms[k]
+        else:
+            /* Add new % terms */
+            k = prngInt(p)%(count(azJsonTemplate)/2)
+            k = k*2 + eType
+            z = azJsonTemplate[k]
+        n = strlen(z)
+        if( (zX = strstr(z,"XX"))!=0 ):
+            unsigned int y = prngInt(p)
+            if( (y&0xff)==((y>>8)&0xff) ):
+                y += 0x100
+            while( (y&0xff)==((y>>16)&0xff) || ((y>>8)&0xff)==((y>>16)&0xff) ):
+                y += 0x10000
+            memcpy(zBuf, z, n+1)
+            z = zBuf
+            zX = strstr(z,"XX")
+            while( zX!=0 ):
+                zX[0] = "0123456789abcdef"[y%16]
+                y /= 16
+                zX[1] = "0123456789abcdef"[y%16]
+                y /= 16
+                zX = strstr(zX, "XX")
+        else if( (zX = strstr(z,"DD"))!=0 ):
+            unsigned int y = prngInt(p)
+            memcpy(zBuf, z, n+1)
+            z = zBuf
+            zX = strstr(z,"DD")
+            while( zX!=0 ):
+                zX[0] = "0123456789"[y%10]
+                y /= 10
+                zX[1] = "0123456789"[y%10]
+                y /= 10
+                zX = strstr(zX, "DD")
+        assert( strstr(z, "XX")==0 )
+        assert( strstr(z, "DD")==0 )
+        if( j+n<STRSZ ):
+            memcpy(&zDest[j], z, n)
+            j += (int)n
+    zDest[STRSZ-1] = 0
+    if( j<STRSZ ):
+        zDest[j] = 0
 
 static void randJsonFunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  unsigned int iSeed;
-  int eType = *(int*)sqlite3_user_data(context);
-  Prng prng;
-  char z1[STRSZ+1], z2[STRSZ+1];
+):
+    unsigned int iSeed
+    int eType = *(int*)sqlite3_user_data(context)
+    Prng prng
+    char z1[STRSZ+1], z2[STRSZ+1]
 
-  iSeed = (unsigned int)sqlite3_value_int(argv[0]);
-  prngSeed(&prng, iSeed);
-  jsonExpand(0, z2, &prng, eType, 1000);
-  jsonExpand(z2, z1, &prng, eType, 1000);
-  jsonExpand(z1, z2, &prng, eType, 100);
-  jsonExpand(z2, z1, &prng, eType, 0);
-  sqlite3_result_text(context, z1, -1, SQLITE_TRANSIENT);
-}
+    iSeed = (unsigned int)sqlite3_value_int(argv[0])
+    prngSeed(&prng, iSeed)
+    jsonExpand(0, z2, &prng, eType, 1000)
+    jsonExpand(z2, z1, &prng, eType, 1000)
+    jsonExpand(z1, z2, &prng, eType, 100)
+    jsonExpand(z2, z1, &prng, eType, 0)
+    sqlite3_result_text(context, z1, -1, SQLITE_TRANSIENT)
 
 #ifdef _WIN32
-  __declspec(dllexport)
+__declspec(dllexport)
 #endif
 int sqlite3_randomjson_init(
-  sqlite3 *db, 
-  char **pzErrMsg, 
+  sqlite3 *db,
+  char **pzErrMsg,
   const sqlite3_api_routines *pApi
-){
-  static int cOne = 1;
-  static int cZero = 0;
-  int rc = SQLITE_OK;
-#ifdef SQLITE_STATIC_RANDOMJSON
-  (void)pApi;      /* Unused parameter */
-#else
-  SQLITE_EXTENSION_INIT2(pApi);
-#endif
-  (void)pzErrMsg;  /* Unused parameter */
-  rc = sqlite3_create_function(db, "random_json", 1,
+):
+    static int cOne = 1
+    static int cZero = 0
+    int rc = SQLITE_OK
+    #ifdef SQLITE_STATIC_RANDOMJSON
+    (void)pApi /* Unused parameter */
+    #else
+    SQLITE_EXTENSION_INIT2(pApi)
+    #endif
+    (void)pzErrMsg /* Unused parameter */
+    rc = sqlite3_create_function(db, "random_json", 1,
                    SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
-                   &cZero, randJsonFunc, 0, 0);
-  if( rc==SQLITE_OK ){
-    rc = sqlite3_create_function(db, "random_json5", 1,
+                   &cZero, randJsonFunc, 0, 0)
+    if( rc==SQLITE_OK ):
+        rc = sqlite3_create_function(db, "random_json5", 1,
                    SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
-                   &cOne, randJsonFunc, 0, 0);
-  }
-  return rc;
-}
+                   &cOne, randJsonFunc, 0, 0)
+    return rc

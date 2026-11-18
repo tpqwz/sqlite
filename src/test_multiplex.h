@@ -13,7 +13,7 @@
 ** This file contains a VFS "shim" - a layer that sits in between the
 ** pager and the real VFS.
 **
-** This particular shim enforces a multiplex system on DB files. 
+** This particular shim enforces a multiplex system on DB files.
 ** This shim shards/partitions a single DB file into smaller
 ** "chunks" such that the total DB file size may exceed the maximum
 ** file size of the underlying file system.
@@ -53,8 +53,8 @@ extern "C" {
 /*
 ** CAPI: Initialize the multiplex VFS shim - sqlite3_multiplex_initialize()
 **
-** Use the VFS named zOrigVfsName as the VFS that does the actual work. 
-** Use the default if zOrigVfsName==NULL. 
+** Use the VFS named zOrigVfsName as the VFS that does the actual work.
+** Use the default if zOrigVfsName==NULL.
 **
 ** The multiplex VFS shim is named "multiplex".  It will become the default
 ** VFS if makeDefault is non-zero.
@@ -93,7 +93,8 @@ extern int sqlite3_multiplex_initialize(const char *zOrigVfsName, int makeDefaul
 extern int sqlite3_multiplex_shutdown(int eForce);
 
 #ifdef __cplusplus
-}  /* End of the 'extern "C"' block */
+}
+/* End of the 'extern "C"' block */
 #endif
 
 #endif /* SQLITE_TEST_MULTIPLEX_H */

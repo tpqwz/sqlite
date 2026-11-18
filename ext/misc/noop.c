@@ -35,10 +35,9 @@ static void noopfunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  assert( argc==1 );
-  sqlite3_result_value(context, argv[0]);
-}
+):
+    assert( argc==1 )
+    sqlite3_result_value(context, argv[0])
 
 /*
 ** Implementation of the multitype_text() function.
@@ -61,42 +60,44 @@ static void multitypeTextFunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  assert( argc==1 );
-  (void)argc;
-  (void)sqlite3_value_text(argv[0]);
-  sqlite3_result_value(context, argv[0]);
-}
+):
+    assert( argc==1 )
+    (void)argc
+    (void)sqlite3_value_text(argv[0])
+    sqlite3_result_value(context, argv[0])
 
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
 int sqlite3_noop_init(
-  sqlite3 *db, 
-  char **pzErrMsg, 
+  sqlite3 *db,
+  char **pzErrMsg,
   const sqlite3_api_routines *pApi
-){
-  int rc = SQLITE_OK;
-  SQLITE_EXTENSION_INIT2(pApi);
-  (void)pzErrMsg;  /* Unused parameter */
-  rc = sqlite3_create_function(db, "noop", 1,
+):
+    int rc = SQLITE_OK
+    SQLITE_EXTENSION_INIT2(pApi)
+    (void)pzErrMsg /* Unused parameter */
+    rc = sqlite3_create_function(db, "noop", 1,
                      SQLITE_UTF8 | SQLITE_DETERMINISTIC,
-                     0, noopfunc, 0, 0);
-  if( rc ) return rc;
-  rc = sqlite3_create_function(db, "noop_i", 1,
+                     0, noopfunc, 0, 0)
+    if( rc ):
+        return rc
+    rc = sqlite3_create_function(db, "noop_i", 1,
                      SQLITE_UTF8 | SQLITE_DETERMINISTIC | SQLITE_INNOCUOUS,
-                     0, noopfunc, 0, 0);
-  if( rc ) return rc;
-  rc = sqlite3_create_function(db, "noop_do", 1,
+                     0, noopfunc, 0, 0)
+    if( rc ):
+        return rc
+    rc = sqlite3_create_function(db, "noop_do", 1,
                      SQLITE_UTF8 | SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY,
-                     0, noopfunc, 0, 0);
-  if( rc ) return rc;
-  rc = sqlite3_create_function(db, "noop_nd", 1,
+                     0, noopfunc, 0, 0)
+    if( rc ):
+        return rc
+    rc = sqlite3_create_function(db, "noop_nd", 1,
                      SQLITE_UTF8,
-                     0, noopfunc, 0, 0);
-  if( rc ) return rc;
-  rc = sqlite3_create_function(db, "multitype_text", 1,
+                     0, noopfunc, 0, 0)
+    if( rc ):
+        return rc
+    rc = sqlite3_create_function(db, "multitype_text", 1,
                      SQLITE_UTF8,
-                     0, multitypeTextFunc, 0, 0);
-  return rc;
-}
+                     0, multitypeTextFunc, 0, 0)
+    return rc

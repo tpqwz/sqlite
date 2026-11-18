@@ -35,8 +35,8 @@
 */
 #ifdef SQLITE_PERFORMANCE_TRACE
 
-static sqlite_uint64 g_start;
-static sqlite_uint64 g_elapsed;
+static sqlite_uint64 g_start
+static sqlite_uint64 g_elapsed
 #define TIMER_START       g_start=sqlite3Hwtime()
 #define TIMER_END         g_elapsed=sqlite3Hwtime()-g_start
 #define TIMER_ELAPSED     g_elapsed
@@ -52,23 +52,23 @@ static sqlite_uint64 g_elapsed;
 ** is used for testing the I/O recovery logic.
 */
 #if defined(SQLITE_TEST)
-extern int sqlite3_io_error_hit;
-extern int sqlite3_io_error_hardhit;
-extern int sqlite3_io_error_pending;
-extern int sqlite3_io_error_persist;
-extern int sqlite3_io_error_benign;
-extern int sqlite3_diskfull_pending;
-extern int sqlite3_diskfull;
+extern int sqlite3_io_error_hit
+extern int sqlite3_io_error_hardhit
+extern int sqlite3_io_error_pending
+extern int sqlite3_io_error_persist
+extern int sqlite3_io_error_benign
+extern int sqlite3_diskfull_pending
+extern int sqlite3_diskfull
 #define SimulateIOErrorBenign(X) sqlite3_io_error_benign=(X)
 #define SimulateIOError(CODE)  \
   if( (sqlite3_io_error_persist && sqlite3_io_error_hit) \
        || sqlite3_io_error_pending-- == 1 )  \
               { local_ioerr(); CODE; }
-static void local_ioerr(){
-  IOTRACE(("IOERR\n"));
-  sqlite3_io_error_hit++;
-  if( !sqlite3_io_error_benign ) sqlite3_io_error_hardhit++;
-}
+static void local_ioerr():
+    IOTRACE(("IOERR\n"))
+    sqlite3_io_error_hit++
+    if( !sqlite3_io_error_benign ):
+        sqlite3_io_error_hardhit++
 #define SimulateDiskfullError(CODE) \
    if( sqlite3_diskfull_pending ){ \
      if( sqlite3_diskfull_pending == 1 ){ \
@@ -90,7 +90,7 @@ static void local_ioerr(){
 ** When testing, keep a count of the number of open files.
 */
 #if defined(SQLITE_TEST)
-extern int sqlite3_open_file_count;
+extern int sqlite3_open_file_count
 #define OpenCounter(X)  sqlite3_open_file_count+=(X)
 #else
 #define OpenCounter(X)

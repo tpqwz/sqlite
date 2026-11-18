@@ -130,6 +130,7 @@ SQLITE_API int sqlite3_intarray_bind(
 );
 
 #ifdef __cplusplus
-}  /* End of the 'extern "C"' block */
+}
+/* End of the 'extern "C"' block */
 #endif
 #endif /* SQLITE_INTARRAY_H */

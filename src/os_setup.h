@@ -20,7 +20,7 @@
 ** Figure out if we are dealing with Unix, Windows, or some other operating
 ** system.
 **
-** After the following block of preprocess macros, all of 
+** After the following block of preprocess macros, all of
 **
 **    SQLITE_OS_KV
 **    SQLITE_OS_OTHER
@@ -36,7 +36,7 @@
 ** and sqlite3_os_end() routines.
 */
 #if SQLITE_OS_KV+1<=1  && SQLITE_OS_OTHER+1<=1 &&  \
-    SQLITE_OS_WIN+1<=1 && SQLITE_OS_UNIX+1<=1 
+    SQLITE_OS_WIN+1<=1 && SQLITE_OS_UNIX+1<=1
 #  if defined(_WIN32) || defined(WIN32) || defined(__CYGWIN__) || \
           defined(__MINGW32__) || defined(__BORLANDC__)
 #    define SQLITE_OS_WIN 1
@@ -86,6 +86,5 @@
 #  undef SQLITE_OS_UNIX
 #  define SQLITE_OS_UNIX 0
 #endif
-
 
 #endif /* SQLITE_OS_SETUP_H */

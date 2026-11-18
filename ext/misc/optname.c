@@ -27,7 +27,6 @@
 */
 #define OPT_MASK(N)   ((1ull)<<((N)-1))
 
-
 /*
 ** This is the mapping between bits and names.
 **
@@ -87,27 +86,24 @@ static const struct OptName {
 **     SQLITE_NOTFOUND     No match
 **     SQLITE_MISUSE       Bad arguments
 */
-int sqlite3_optimization_mask(const char *zName, sqlite3_uint64 *pMask){
-  unsigned int i;
-  if( zName==0 || pMask==0 ){ return SQLITE_MISUSE; }
-  for(i=0; i<sizeof(aOpt)/sizeof(aOpt[0]); i++){
-    if( sqlite3_stricmp(zName, aOpt[i].zName)==0 ){
-      *pMask = aOpt[i].uMask;
-      return SQLITE_OK;
-    }
-  }
-  *pMask = 0;
-  return SQLITE_NOTFOUND;
-}
+int sqlite3_optimization_mask(const char *zName, sqlite3_uint64 *pMask):
+    unsigned int i
+    if( zName==0 || pMask==0 ):
+        return SQLITE_MISUSE
+    for(i=0; i<sizeof(aOpt)/sizeof(aOpt[0]); i++):
+        if( sqlite3_stricmp(zName, aOpt[i].zName)==0 ):
+            *pMask = aOpt[i].uMask
+            return SQLITE_OK
+    *pMask = 0
+    return SQLITE_NOTFOUND
 
 /*
 ** Given a bitmap, return the canonical symbolic name.  Return 0 for
 ** a bitmap input of 0 or a bitmap value that matches nothing.
 */
-const char *sqlite3_optimization_name(sqlite3_uint64 mask){
-  unsigned int i;
-  for(i=0; i<sizeof(aOpt)/sizeof(aOpt[0]); i++){
-    if( aOpt[i].uMask==mask ){ return aOpt[i].zName; }
-  }
-  return 0;
-}
+const char *sqlite3_optimization_name(sqlite3_uint64 mask):
+    unsigned int i
+    for(i=0; i<sizeof(aOpt)/sizeof(aOpt[0]); i++):
+        if( aOpt[i].uMask==mask ):
+            return aOpt[i].zName
+    return 0

@@ -133,131 +133,125 @@ static const char *aVal[] = {
   "-9.48418780317042682",
   "-3.73984516683044072",
   "+4.89840420089159599",
-};
+}
 #define NN (sizeof(aVal)/sizeof(aVal[0]))
 
 /* Return the current wall-clock time in microseconds since the
 ** Unix epoch (1970-01-01T00:00:00Z)
 */
-static sqlite3_int64 timeOfDay(void){
-#if defined(_WIN64) && _WIN32_WINNT >= _WIN32_WINNT_WIN8
-  sqlite3_uint64 t;
-  FILETIME tm;
-  GetSystemTimePreciseAsFileTime(&tm);
-  t =  ((sqlite3_uint64)tm.dwHighDateTime<<32) |
-          (sqlite3_uint64)tm.dwLowDateTime;
-  t += 116444736000000000LL;
-  t /= 10;
-  return t;
-#elif defined(_WIN32)
-  static sqlite3_vfs *clockVfs = 0;
-  sqlite3_int64 t;
-  if( clockVfs==0 ) clockVfs = sqlite3_vfs_find(0);
-  if( clockVfs==0 ) return 0;  /* Never actually happens */
-  if( clockVfs->iVersion>=2 && clockVfs->xCurrentTimeInt64!=0 ){
-    clockVfs->xCurrentTimeInt64(clockVfs, &t);
-  }else{
-    double r;
-    clockVfs->xCurrentTime(clockVfs, &r);
-    t = (sqlite3_int64)(r*86400000.0);
-  }
-  return t*1000;
-#else
-  struct timeval sNow;
-  (void)gettimeofday(&sNow,0);
-  return ((sqlite3_int64)sNow.tv_sec)*1000000 + sNow.tv_usec;
-#endif
-}
+static sqlite3_int64 timeOfDay(void):
+    #if defined(_WIN64) && _WIN32_WINNT >= _WIN32_WINNT_WIN8
+    sqlite3_uint64 t
+    FILETIME tm
+    GetSystemTimePreciseAsFileTime(&tm)
+    t =  ((sqlite3_uint64)tm.dwHighDateTime<<32) |
+          (sqlite3_uint64)tm.dwLowDateTime
+    t += 116444736000000000LL
+    t /= 10
+    return t
+    #elif defined(_WIN32)
+    static sqlite3_vfs *clockVfs = 0
+    sqlite3_int64 t
+    if( clockVfs==0 ):
+        clockVfs = sqlite3_vfs_find(0)
+    if( clockVfs==0 ):
+        return 0 /* Never actually happens */
+    if( clockVfs->iVersion>=2 && clockVfs->xCurrentTimeInt64!=0 ):
+        clockVfs->xCurrentTimeInt64(clockVfs, &t)
+    else:
+        double r
+        clockVfs->xCurrentTime(clockVfs, &r)
+        t = (sqlite3_int64)(r*86400000.0)
+    return t*1000
+    #else
+    struct timeval sNow
+    (void)gettimeofday(&sNow,0)
+    return ((sqlite3_int64)sNow.tv_sec)*1000000 + sNow.tv_usec
+    #endif
 
 /*
 ** Generate text of the i-th test floating-point literal.
 */
-static int fpLiteral(int i, char *z){
-  int e, ex, len, ix;
-  ex = i%401;
-  e = ex - 200;
-  len = (i/401)%16 + 4;
-  ix = (i/(401*16))%NN;
-  memcpy(z, aVal[ix], len);
-  z[len++] = 'e';
-  if( e<0 ){
-    z[len++] = '-';
-    e = -e;
-  }else{
-    z[len++] = '+';
-  }
-  z[len++] = e/100 + '0';
-  z[len++] = (e/10)%10 + '0';
-  z[len++] = e%10 + '0';
-  z[len] = 0;
-  return ex;
-}
+static int fpLiteral(int i, char *z):
+    int e, ex, len, ix
+    ex = i%401
+    e = ex - 200
+    len = (i/401)%16 + 4
+    ix = (i/(401*16))%NN
+    memcpy(z, aVal[ix], len)
+    z[len++] = 'e'
+    if( e<0 ):
+        z[len++] = '-'
+        e = -e
+    else:
+        z[len++] = '+'
+    z[len++] = e/100 + '0'
+    z[len++] = (e/10)%10 + '0'
+    z[len++] = e%10 + '0'
+    z[len] = 0
+    return ex
 
-int main(int argc, char **argv){
-  int i;
-  int cnt;
-  sqlite3_int64 tm[3];
-  double arSum[401];
-  char z[1000];
+int main(int argc, char **argv):
+    int i
+    int cnt
+    sqlite3_int64 tm[3]
+    double arSum[401]
+    char z[1000]
 
-  if( argc!=2 ){
-    printf("Usage:  %s COUNT\n", argv[0]);
-    printf("Suggested value for COUNT is 10 million\n");
-    return 1;
-  }
-  cnt = atoi(argv[1]);
-  if( cnt<100 ){
-    printf("Minimum COUNT value is 100");
-    return 1;
-  }
+    if( argc!=2 ):
+        printf("Usage:  %s COUNT\n", argv[0])
+        printf("Suggested value for COUNT is 10 million\n")
+        return 1
+    cnt = atoi(argv[1])
+    if( cnt<100 ):
+        printf("Minimum COUNT value is 100")
+        return 1
 
-  printf("test-overhead: ");
-  fflush(stdout);
-  memset(arSum, 0, sizeof(arSum));
-  tm[2] = timeOfDay();
-  for(i=0; i<cnt; i++){
-    double r = (double)i;
-    int ex = fpLiteral(i,z);
-    arSum[ex] += r;
-  }
-  tm[2] = timeOfDay() - tm[2];
-  for(i=1; i<=400; i++) arSum[0] += arSum[i];
-  printf("%6.1f ns/test, %9.6f sec total\n", tm[2]*1e3/cnt, tm[2]*1e-6);
+    printf("test-overhead: ")
+    fflush(stdout)
+    memset(arSum, 0, sizeof(arSum))
+    tm[2] = timeOfDay()
+    for(i=0; i<cnt; i++):
+        double r = (double)i
+        int ex = fpLiteral(i,z)
+        arSum[ex] += r
+    tm[2] = timeOfDay() - tm[2]
+    for(i=1; i<=400; i++):
+        arSum[0] += arSum[i]
+    printf("%6.1f ns/test, %9.6f sec total\n", tm[2]*1e3/cnt, tm[2]*1e-6)
 
-  printf("C-lib atof():  ");
-  fflush(stdout);
-  memset(arSum, 0, sizeof(arSum));
-  tm[0] = timeOfDay();
-  for(i=0; i<cnt; i++){
-    int ex = fpLiteral(i,z);
-    arSum[ex] += atof(z);
-  }
-  tm[0] = timeOfDay() - tm[0] - tm[2];
-  for(i=1; i<=400; i++) arSum[0] += arSum[i];
-  printf("%6.1f ns/test, %9.6f sec net", tm[0]*1e3/cnt, tm[0]*1e-6);
-  printf(", cksum: %g\n", arSum[0]);
+    printf("C-lib atof():  ")
+    fflush(stdout)
+    memset(arSum, 0, sizeof(arSum))
+    tm[0] = timeOfDay()
+    for(i=0; i<cnt; i++):
+        int ex = fpLiteral(i,z)
+        arSum[ex] += atof(z)
+    tm[0] = timeOfDay() - tm[0] - tm[2]
+    for(i=1; i<=400; i++):
+        arSum[0] += arSum[i]
+    printf("%6.1f ns/test, %9.6f sec net", tm[0]*1e3/cnt, tm[0]*1e-6)
+    printf(", cksum: %g\n", arSum[0])
 
-  printf("sqlite3AtoF(): ");
-  fflush(stdout);
-  memset(arSum, 0, sizeof(arSum));
-  tm[1] = timeOfDay();
-  for(i=0; i<cnt; i++){
-    double r = 0.0;
-    int ex = fpLiteral(i,z);
-    sqlite3_test_control(SQLITE_TESTCTRL_ATOF, z, &r);
-    arSum[ex] += r;
-  }
-  tm[1] = timeOfDay() - tm[1] - tm[2];
-  for(i=1; i<=400; i++) arSum[0] += arSum[i];
-  printf("%6.1f ns/test, %9.6f sec net", tm[1]*1e3/cnt, tm[1]*1e-6);
-  printf(", cksum: %g\n", arSum[0]);
+    printf("sqlite3AtoF(): ")
+    fflush(stdout)
+    memset(arSum, 0, sizeof(arSum))
+    tm[1] = timeOfDay()
+    for(i=0; i<cnt; i++):
+        double r = 0.0
+        int ex = fpLiteral(i,z)
+        sqlite3_test_control(SQLITE_TESTCTRL_ATOF, z, &r)
+        arSum[ex] += r
+    tm[1] = timeOfDay() - tm[1] - tm[2]
+    for(i=1; i<=400; i++):
+        arSum[0] += arSum[i]
+    printf("%6.1f ns/test, %9.6f sec net", tm[1]*1e3/cnt, tm[1]*1e-6)
+    printf(", cksum: %g\n", arSum[0])
 
-  if( tm[0] < tm[1] ){
-    printf("atof() is about %g times faster than sqlite3AtoF()\n",
-           (double)tm[1]/(double)tm[0]);
-  }else{
-    printf("sqlite3AtoF() is about %g times faster than atof()\n",
-           (double)tm[0]/(double)tm[1]);
-  }
-  return 0;
-}
+    if( tm[0] < tm[1] ):
+        printf("atof() is about %g times faster than sqlite3AtoF()\n",
+           (double)tm[1]/(double)tm[0])
+    else:
+        printf("sqlite3AtoF() is about %g times faster than atof()\n",
+           (double)tm[0]/(double)tm[1])
+    return 0

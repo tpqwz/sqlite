@@ -9,7 +9,7 @@
 **    May you share freely, never taking more than you give.
 **
 *************************************************************************
-** 
+**
 ** This file implements a program used to measure the start-up performance
 ** of SQLite.
 **
@@ -40,7 +40,7 @@ static const char zHelp[] =
   "  --dbname NAME       Set the name of the test database file\n"
   "  --heap SZ MIN       Memory allocator uses SZ bytes & min allocation MIN\n"
   "  --stats             Show statistics at the end\n"
-/* TBD
+    /* TBD
   "  --journal M         Set the journal_mode to M\n"
   "  --lookaside N SZ    Configure lookaside for N slots of SZ bytes each\n"
   "  --mmap SZ           MMAP the first SZ bytes of the database file\n"
@@ -53,20 +53,18 @@ static const char zHelp[] =
   "  --utf16be           Set text encoding to UTF-16BE\n"
   "  --utf16le           Set text encoding to UTF-16LE\n"
   "  --utf8              Set text encoding to UTF-8\n"
-*/
-;
+    */
 
-static void usage(const char *argv0){
-  printf(zHelp, argv0);
-  exit(1);
-}
+static void usage(const char *argv0):
+    printf(zHelp, argv0)
+    exit(1)
 
 /*
 ** The test schema is derived from the Fossil repository for SQLite itself.
 ** The schema covers the repository, the local checkout database, and
 ** the global configuration database.
 */
-static const char zTestSchema[] = 
+static const char zTestSchema[] =
   "CREATE TABLE repo_blob(\n"
   "  rid INTEGER PRIMARY KEY,\n"
   "  rcvid INTEGER,\n"
@@ -372,7 +370,6 @@ static const char zTestSchema[] =
   "  value TEXT\n"
   ");\n"
   "CREATE TABLE configdb_sqlite_stat1(tbl,idx,stat);\n"
-;
 
 #ifdef __linux__
 #include <sys/types.h>
@@ -381,248 +378,215 @@ static const char zTestSchema[] =
 /*
 ** Attempt to display I/O stats on Linux using /proc/PID/io
 */
-static void displayLinuxIoStats(FILE *out){
-  FILE *in;
-  char z[200];
-  sqlite3_snprintf(sizeof(z), z, "/proc/%d/io", getpid());
-  in = fopen(z, "rb");
-  if( in==0 ) return;
-  while( fgets(z, sizeof(z), in)!=0 ){
-    static const struct {
-      const char *zPattern;
-      const char *zDesc;
-    } aTrans[] = {
-      { "rchar: ",                  "Bytes received by read():" },
-      { "wchar: ",                  "Bytes sent to write():"    },
-      { "syscr: ",                  "Read() system calls:"      },
-      { "syscw: ",                  "Write() system calls:"     },
-      { "read_bytes: ",             "Bytes rcvd from storage:"  },
-      { "write_bytes: ",            "Bytes sent to storage:"    },
-      { "cancelled_write_bytes: ",  "Cancelled write bytes:"    },
-    };
-    int i;
-    for(i=0; i<sizeof(aTrans)/sizeof(aTrans[0]); i++){
-      int n = (int)strlen(aTrans[i].zPattern);
-      if( strncmp(aTrans[i].zPattern, z, n)==0 ){
-        fprintf(out, "-- %-28s %s", aTrans[i].zDesc, &z[n]);
-        break;
-      }
-    }
-  }
-  fclose(in);
-}   
+static void displayLinuxIoStats(FILE *out):
+    FILE *in
+    char z[200]
+    sqlite3_snprintf(sizeof(z), z, "/proc/%d/io", getpid())
+    in = fopen(z, "rb")
+    if( in==0 ):
+        return
+    while( fgets(z, sizeof(z), in)!=0 ):
+        static const struct {
+              const char *zPattern;
+              const char *zDesc;
+            } aTrans[] = {
+              { "rchar: ",                  "Bytes received by read():" },
+              { "wchar: ",                  "Bytes sent to write():"    },
+              { "syscr: ",                  "Read() system calls:"      },
+              { "syscw: ",                  "Write() system calls:"     },
+              { "read_bytes: ",             "Bytes rcvd from storage:"  },
+              { "write_bytes: ",            "Bytes sent to storage:"    },
+              { "cancelled_write_bytes: ",  "Cancelled write bytes:"    },
+            };
+        int i
+        for(i=0; i<sizeof(aTrans)/sizeof(aTrans[0]); i++):
+            int n = (int)strlen(aTrans[i].zPattern)
+            if( strncmp(aTrans[i].zPattern, z, n)==0 ):
+                fprintf(out, "-- %-28s %s", aTrans[i].zDesc, &z[n])
+                break
+    fclose(in)
 #endif
 
 /*
 ** Return the value of a hexadecimal digit.  Return -1 if the input
 ** is not a hex digit.
 */
-static int hexDigitValue(char c){
-  if( c>='0' && c<='9' ) return c - '0';
-  if( c>='a' && c<='f' ) return c - 'a' + 10;
-  if( c>='A' && c<='F' ) return c - 'A' + 10;
-  return -1;
-}
+static int hexDigitValue(char c):
+    if( c>='0' && c<='9' ):
+        return c - '0'
+    if( c>='a' && c<='f' ):
+        return c - 'a' + 10
+    if( c>='A' && c<='F' ):
+        return c - 'A' + 10
+    return -1
 
 /*
 ** Interpret zArg as an integer value, possibly with suffixes.
 */
-static int integerValue(const char *zArg){
-  sqlite3_int64 v = 0;
-  static const struct { char *zSuffix; int iMult; } aMult[] = {
-    { "KiB", 1024 },
-    { "MiB", 1024*1024 },
-    { "GiB", 1024*1024*1024 },
-    { "KB",  1000 },
-    { "MB",  1000000 },
-    { "GB",  1000000000 },
-    { "K",   1000 },
-    { "M",   1000000 },
-    { "G",   1000000000 },
-  };
-  int i;
-  int isNeg = 0;
-  if( zArg[0]=='-' ){
-    isNeg = 1;
-    zArg++;
-  }else if( zArg[0]=='+' ){
-    zArg++;
-  }
-  if( zArg[0]=='0' && zArg[1]=='x' ){
-    int x;
-    zArg += 2;
-    while( (x = hexDigitValue(zArg[0]))>=0 ){
-      v = (v<<4) + x;
-      zArg++;
-    }
-  }else{
-    while( isdigit(zArg[0]) ){
-      v = v*10 + zArg[0] - '0';
-      zArg++;
-    }
-  }
-  for(i=0; i<sizeof(aMult)/sizeof(aMult[0]); i++){
-    if( sqlite3_stricmp(aMult[i].zSuffix, zArg)==0 ){
-      v *= aMult[i].iMult;
-      break;
-    }
-  }
-  if( v>0x7fffffff ){
-    printf("ERROR: parameter too large - max 2147483648\n");
-    exit(1);
-  }
-  return (int)(isNeg? -v : v);
-}
+static int integerValue(const char *zArg):
+    sqlite3_int64 v = 0
+    static const struct { char *zSuffix; int iMult; } aMult[] = {
+        { "KiB", 1024 },
+        { "MiB", 1024*1024 },
+        { "GiB", 1024*1024*1024 },
+        { "KB",  1000 },
+        { "MB",  1000000 },
+        { "GB",  1000000000 },
+        { "K",   1000 },
+        { "M",   1000000 },
+        { "G",   1000000000 },
+      };
+    int i
+    int isNeg = 0
+    if( zArg[0]=='-' ):
+        isNeg = 1
+        zArg++
+    else if( zArg[0]=='+' ):
+        zArg++
+    if( zArg[0]=='0' && zArg[1]=='x' ):
+        int x
+        zArg += 2
+        while( (x = hexDigitValue(zArg[0]))>=0 ):
+            v = (v<<4) + x
+            zArg++
+    else:
+        while( isdigit(zArg[0]) ):
+            v = v*10 + zArg[0] - '0'
+            zArg++
+    for(i=0; i<sizeof(aMult)/sizeof(aMult[0]); i++):
+        if( sqlite3_stricmp(aMult[i].zSuffix, zArg)==0 ):
+            v *= aMult[i].iMult
+            break
+    if( v>0x7fffffff ):
+        printf("ERROR: parameter too large - max 2147483648\n")
+        exit(1)
+    return (int)(isNeg? -v : v)
 
+int main(int argc, char **argv):
+    const char *zCmd = 0
+    int i
+    int bAutovac = 0
+    int showStats = 0
+    const char *zDbName = "./startup.db"
+    int nHeap = 0
+    int mnHeap = 0
 
-int main(int argc, char **argv){
-  const char *zCmd = 0;
-  int i;
-  int bAutovac = 0;
-  int showStats = 0;
-  const char *zDbName = "./startup.db";
-  int nHeap = 0;
-  int mnHeap = 0;
-
-  for(i=1; i<argc; i++){
-    const char *z = argv[i];
-    if( z[0]!='-' ){
-      if( zCmd ){
-        usage(argv[0]);
-      }
-      zCmd = z;
-      continue;
-    }
-    if( z[1]=='-' ) z++;
-    if( strcmp(z, "-autovacuum")==0 ){
-      bAutovac = 1;
-    }else
-    if( strcmp(z, "-dbname")==0 ){
-      if( i==argc-1 ){
-        printf("ERROR: missing argument on \"%s\"\n", argv[0]);
-        exit(1);
-      }
-      zDbName = argv[++i];
-    }else
-    if( strcmp(z,"-heap")==0 ){
-      if( i>=argc-2 ){
-        printf("ERROR: missing arguments on %s\n", argv[i]);
-        exit(1);
-      }
-      nHeap = integerValue(argv[i+1]);
-      mnHeap = integerValue(argv[i+2]);
-      i += 2;
-    }else
-    if( strcmp(z,"-stats")==0 ){
-       showStats = 1;
-    }else
-    {
-      printf("ERROR: unknown option \"%s\"\n", argv[i]);
-      usage(argv[0]);
-    }
-  }
-  if( zCmd==0 ){
-    printf("ERROR: no COMMAND specified\n");
-    usage(argv[0]);
-  }
-  if( strcmp(zCmd, "run")==0 ){
-    sqlite3 *db;
-    int rc;
-    char *zErr = 0;
-    void *pHeap = 0;
-    if( nHeap>0 ){
-      pHeap = malloc( nHeap );
-      if( pHeap==0 ){
-        printf("ERROR: cannot allocate %d-byte heap\n", nHeap);
-        exit(1);
-      }
-      rc = sqlite3_config(SQLITE_CONFIG_HEAP, pHeap, nHeap, mnHeap);
-      if( rc ){
-        printf("ERROR: heap configuration failed: %d\n", rc);
-        exit(1);
-      }
-    }
-    rc = sqlite3_open(zDbName, &db);
-    if( rc ){
-      printf("SQLite error: %s\n", sqlite3_errmsg(db));
-    }else{
-      sqlite3_exec(db, "PRAGMA synchronous", 0, 0, &zErr);
-    }
-    if( zErr ){
-      printf("ERROR: %s\n", zErr);
-      sqlite3_free(zErr);
-    }
-    if( showStats ){
-      int iCur, iHi;
-      sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_USED, &iCur, &iHi, 0);
-      printf("-- Lookaside Slots Used:        %d (max %d)\n", iCur,iHi);
-      sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_HIT, &iCur, &iHi, 0);
-      printf("-- Successful lookasides:       %d\n", iHi);
-      sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE, &iCur,&iHi,0);
-      printf("-- Lookaside size faults:       %d\n", iHi);
-      sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL, &iCur,&iHi,0);
-      printf("-- Lookaside OOM faults:        %d\n", iHi);
-      sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_USED, &iCur, &iHi, 0);
-      printf("-- Pager Heap Usage:            %d bytes\n", iCur);
-      sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_HIT, &iCur, &iHi, 1);
-      printf("-- Page cache hits:             %d\n", iCur);
-      sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_MISS, &iCur, &iHi, 1);
-      printf("-- Page cache misses:           %d\n", iCur);
-      sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_WRITE, &iCur, &iHi, 1);
-      printf("-- Page cache writes:           %d\n", iCur); 
-      sqlite3_db_status(db, SQLITE_DBSTATUS_SCHEMA_USED, &iCur, &iHi, 0);
-      printf("-- Schema Heap Usage:           %d bytes\n", iCur); 
-      sqlite3_db_status(db, SQLITE_DBSTATUS_STMT_USED, &iCur, &iHi, 0);
-      printf("-- Statement Heap Usage:        %d bytes\n", iCur); 
-    }
-    sqlite3_close(db);
-    free(pHeap);
-    /* Global memory usage statistics printed after the database connection
-    ** has closed.  Memory usage should be zero at this point. */
-    if( showStats ){
-      int iCur, iHi;
-      sqlite3_status(SQLITE_STATUS_MEMORY_USED, &iCur, &iHi, 0);
-      printf("-- Memory Used (bytes):         %d (max %d)\n", iCur,iHi);
-      sqlite3_status(SQLITE_STATUS_MALLOC_COUNT, &iCur, &iHi, 0);
-      printf("-- Outstanding Allocations:     %d (max %d)\n", iCur,iHi);
-      sqlite3_status(SQLITE_STATUS_PAGECACHE_OVERFLOW, &iCur, &iHi, 0);
-      printf("-- Pcache Overflow Bytes:       %d (max %d)\n", iCur,iHi);
-      sqlite3_status(SQLITE_STATUS_MALLOC_SIZE, &iCur, &iHi, 0);
-      printf("-- Largest Allocation:          %d bytes\n",iHi);
-      sqlite3_status(SQLITE_STATUS_PAGECACHE_SIZE, &iCur, &iHi, 0);
-      printf("-- Largest Pcache Allocation:   %d bytes\n",iHi);
-#ifdef __linux__
-      displayLinuxIoStats(stdout);
-#endif
-    }
-    return 0;
-  }
-  if( strcmp(zCmd, "init")==0 ){
-    sqlite3 *db;
-    char *zAux;
-    char *zErr = 0;
-    int rc;
-    unlink(zDbName);
-    zAux = sqlite3_mprintf("%s-journal", zDbName);
-    unlink(zAux);
-    sqlite3_free(zAux);
-    zAux = sqlite3_mprintf("%s-wal", zDbName);
-    unlink(zAux);
-    sqlite3_free(zAux);
-    rc = sqlite3_open(zDbName, &db);
-    if( rc ){
-      printf("SQLite error: %s\n", sqlite3_errmsg(db));
-    }else{
-      sqlite3_exec(db, "BEGIN", 0, 0, 0);
-      sqlite3_exec(db, zTestSchema, 0, 0, &zErr);
-      sqlite3_exec(db, "COMMIT", 0, 0, 0);
-    }
-    if( zErr ){
-      printf("ERROR: %s\n", zErr);
-      sqlite3_free(zErr);
-    }
-    sqlite3_close(db);
-    return 0;
-
-  }
-}
+    for(i=1; i<argc; i++):
+        const char *z = argv[i]
+        if( z[0]!='-' ):
+            if( zCmd ):
+                usage(argv[0])
+            zCmd = z
+            continue
+        if( z[1]=='-' ):
+            z++
+        if( strcmp(z, "-autovacuum")==0 ):
+            bAutovac = 1
+        else if( strcmp(z, "-dbname")==0 ):
+            if( i==argc-1 ):
+                printf("ERROR: missing argument on \"%s\"\n", argv[0])
+                exit(1)
+            zDbName = argv[++i]
+        else if( strcmp(z,"-heap")==0 ):
+            if( i>=argc-2 ):
+                printf("ERROR: missing arguments on %s\n", argv[i])
+                exit(1)
+            nHeap = integerValue(argv[i+1])
+            mnHeap = integerValue(argv[i+2])
+            i += 2
+        else if( strcmp(z,"-stats")==0 ):
+            showStats = 1
+        else:
+            printf("ERROR: unknown option \"%s\"\n", argv[i])
+            usage(argv[0])
+    if( zCmd==0 ):
+        printf("ERROR: no COMMAND specified\n")
+        usage(argv[0])
+    if( strcmp(zCmd, "run")==0 ):
+        sqlite3 *db
+        int rc
+        char *zErr = 0
+        void *pHeap = 0
+        if( nHeap>0 ):
+            pHeap = malloc( nHeap )
+            if( pHeap==0 ):
+                printf("ERROR: cannot allocate %d-byte heap\n", nHeap)
+                exit(1)
+            rc = sqlite3_config(SQLITE_CONFIG_HEAP, pHeap, nHeap, mnHeap)
+            if( rc ):
+                printf("ERROR: heap configuration failed: %d\n", rc)
+                exit(1)
+        rc = sqlite3_open(zDbName, &db)
+        if( rc ):
+            printf("SQLite error: %s\n", sqlite3_errmsg(db))
+        else:
+            sqlite3_exec(db, "PRAGMA synchronous", 0, 0, &zErr)
+        if( zErr ):
+            printf("ERROR: %s\n", zErr)
+            sqlite3_free(zErr)
+        if( showStats ):
+            int iCur, iHi
+            sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_USED, &iCur, &iHi, 0)
+            printf("-- Lookaside Slots Used:        %d (max %d)\n", iCur,iHi)
+            sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_HIT, &iCur, &iHi, 0)
+            printf("-- Successful lookasides:       %d\n", iHi)
+            sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE, &iCur,&iHi,0)
+            printf("-- Lookaside size faults:       %d\n", iHi)
+            sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL, &iCur,&iHi,0)
+            printf("-- Lookaside OOM faults:        %d\n", iHi)
+            sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_USED, &iCur, &iHi, 0)
+            printf("-- Pager Heap Usage:            %d bytes\n", iCur)
+            sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_HIT, &iCur, &iHi, 1)
+            printf("-- Page cache hits:             %d\n", iCur)
+            sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_MISS, &iCur, &iHi, 1)
+            printf("-- Page cache misses:           %d\n", iCur)
+            sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_WRITE, &iCur, &iHi, 1)
+            printf("-- Page cache writes:           %d\n", iCur)
+            sqlite3_db_status(db, SQLITE_DBSTATUS_SCHEMA_USED, &iCur, &iHi, 0)
+            printf("-- Schema Heap Usage:           %d bytes\n", iCur)
+            sqlite3_db_status(db, SQLITE_DBSTATUS_STMT_USED, &iCur, &iHi, 0)
+            printf("-- Statement Heap Usage:        %d bytes\n", iCur)
+        sqlite3_close(db)
+        free(pHeap)
+        /* Global memory usage statistics printed after the database connection
+            ** has closed.  Memory usage should be zero at this point. */
+        if( showStats ):
+            int iCur, iHi
+            sqlite3_status(SQLITE_STATUS_MEMORY_USED, &iCur, &iHi, 0)
+            printf("-- Memory Used (bytes):         %d (max %d)\n", iCur,iHi)
+            sqlite3_status(SQLITE_STATUS_MALLOC_COUNT, &iCur, &iHi, 0)
+            printf("-- Outstanding Allocations:     %d (max %d)\n", iCur,iHi)
+            sqlite3_status(SQLITE_STATUS_PAGECACHE_OVERFLOW, &iCur, &iHi, 0)
+            printf("-- Pcache Overflow Bytes:       %d (max %d)\n", iCur,iHi)
+            sqlite3_status(SQLITE_STATUS_MALLOC_SIZE, &iCur, &iHi, 0)
+            printf("-- Largest Allocation:          %d bytes\n",iHi)
+            sqlite3_status(SQLITE_STATUS_PAGECACHE_SIZE, &iCur, &iHi, 0)
+            printf("-- Largest Pcache Allocation:   %d bytes\n",iHi)
+            #ifdef __linux__
+            displayLinuxIoStats(stdout)
+            #endif
+        return 0
+    if( strcmp(zCmd, "init")==0 ):
+        sqlite3 *db
+        char *zAux
+        char *zErr = 0
+        int rc
+        unlink(zDbName)
+        zAux = sqlite3_mprintf("%s-journal", zDbName)
+        unlink(zAux)
+        sqlite3_free(zAux)
+        zAux = sqlite3_mprintf("%s-wal", zDbName)
+        unlink(zAux)
+        sqlite3_free(zAux)
+        rc = sqlite3_open(zDbName, &db)
+        if( rc ):
+            printf("SQLite error: %s\n", sqlite3_errmsg(db))
+        else:
+            sqlite3_exec(db, "BEGIN", 0, 0, 0)
+            sqlite3_exec(db, zTestSchema, 0, 0, &zErr)
+            sqlite3_exec(db, "COMMIT", 0, 0, 0)
+        if( zErr ):
+            printf("ERROR: %s\n", zErr)
+            sqlite3_free(zErr)
+        sqlite3_close(db)
+        return 0

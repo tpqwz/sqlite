@@ -66,9 +66,9 @@
 **
 ** USING
 **
-** Open database connections using the sqlite3_open() or 
+** Open database connections using the sqlite3_open() or
 ** sqlite3_open_v2() interfaces, as normal.  Ordinary database files
-** (without a checksum) will operate normally.  Databases with 
+** (without a checksum) will operate normally.  Databases with
 ** checksums will return an SQLITE_IOERR_DATA error if a page is
 ** encountered that contains an invalid checksum.
 **
@@ -92,7 +92,7 @@
 ** If the database is in WAL mode, you should shutdown and
 ** reopen all database connections before continuing.
 **
-** From the CLI, use the ".filectrl reserve_bytes 8" command, 
+** From the CLI, use the ".filectrl reserve_bytes 8" command,
 ** followed by "VACUUM;".
 **
 ** Note that SQLite allows the number of reserve-bytes to be
@@ -164,24 +164,23 @@
 # include "sqlite3.h"
 #else
 # include "sqlite3ext.h"
-  SQLITE_EXTENSION_INIT1
-#endif
-#include <string.h>
-#include <assert.h>
+SQLITE_EXTENSION_INIT1
+    #endif
+    #include <string.h>
+    #include <assert.h>
 
-
-/*
-** Forward declaration of objects used by this utility
-*/
-typedef struct sqlite3_vfs CksmVfs;
-typedef struct CksmFile CksmFile;
+    /*
+    ** Forward declaration of objects used by this utility
+    */
+    typedef struct sqlite3_vfs CksmVfs
+typedef struct CksmFile CksmFile
 
 /*
 ** Useful datatype abbreviations
 */
 #if !defined(SQLITE_AMALGAMATION)
-  typedef unsigned char u8;
-  typedef unsigned int u32;
+typedef unsigned char u8
+typedef unsigned int u32
 #endif
 
 /* Access to a lower-level VFS that (might) implement dynamic loading,
@@ -191,56 +190,55 @@ typedef struct CksmFile CksmFile;
 #define ORIGFILE(p) ((sqlite3_file*)(((CksmFile*)(p))+1))
 
 /* An open file */
-struct CksmFile {
-  sqlite3_file base;    /* IO methods */
-  const char *zFName;   /* Original name of the file */
-  char computeCksm;     /* True to compute checksums.
+struct CksmFile:
+    sqlite3_file base /* IO methods */
+    const char *zFName /* Original name of the file */
+    char computeCksm /* True to compute checksums.
                         ** Always true if reserve size is 8. */
-  char verifyCksm;      /* True to verify checksums */
-  CksmFile *pPartner;   /* Ptr from WAL to main-db, or from main-db to WAL */
-};
+    char verifyCksm /* True to verify checksums */
+    CksmFile *pPartner /* Ptr from WAL to main-db, or from main-db to WAL */
 
 /*
 ** Methods for CksmFile
 */
-static int cksmClose(sqlite3_file*);
-static int cksmRead(sqlite3_file*, void*, int iAmt, sqlite3_int64 iOfst);
-static int cksmWrite(sqlite3_file*,const void*,int iAmt, sqlite3_int64 iOfst);
-static int cksmTruncate(sqlite3_file*, sqlite3_int64 size);
-static int cksmSync(sqlite3_file*, int flags);
-static int cksmFileSize(sqlite3_file*, sqlite3_int64 *pSize);
-static int cksmLock(sqlite3_file*, int);
-static int cksmUnlock(sqlite3_file*, int);
-static int cksmCheckReservedLock(sqlite3_file*, int *pResOut);
-static int cksmFileControl(sqlite3_file*, int op, void *pArg);
-static int cksmSectorSize(sqlite3_file*);
-static int cksmDeviceCharacteristics(sqlite3_file*);
-static int cksmShmMap(sqlite3_file*, int iPg, int pgsz, int, void volatile**);
-static int cksmShmLock(sqlite3_file*, int offset, int n, int flags);
-static void cksmShmBarrier(sqlite3_file*);
-static int cksmShmUnmap(sqlite3_file*, int deleteFlag);
-static int cksmFetch(sqlite3_file*, sqlite3_int64 iOfst, int iAmt, void **pp);
-static int cksmUnfetch(sqlite3_file*, sqlite3_int64 iOfst, void *p);
+static int cksmClose(sqlite3_file*)
+static int cksmRead(sqlite3_file*, void*, int iAmt, sqlite3_int64 iOfst)
+static int cksmWrite(sqlite3_file*,const void*,int iAmt, sqlite3_int64 iOfst)
+static int cksmTruncate(sqlite3_file*, sqlite3_int64 size)
+static int cksmSync(sqlite3_file*, int flags)
+static int cksmFileSize(sqlite3_file*, sqlite3_int64 *pSize)
+static int cksmLock(sqlite3_file*, int)
+static int cksmUnlock(sqlite3_file*, int)
+static int cksmCheckReservedLock(sqlite3_file*, int *pResOut)
+static int cksmFileControl(sqlite3_file*, int op, void *pArg)
+static int cksmSectorSize(sqlite3_file*)
+static int cksmDeviceCharacteristics(sqlite3_file*)
+static int cksmShmMap(sqlite3_file*, int iPg, int pgsz, int, void volatile**)
+static int cksmShmLock(sqlite3_file*, int offset, int n, int flags)
+static void cksmShmBarrier(sqlite3_file*)
+static int cksmShmUnmap(sqlite3_file*, int deleteFlag)
+static int cksmFetch(sqlite3_file*, sqlite3_int64 iOfst, int iAmt, void **pp)
+static int cksmUnfetch(sqlite3_file*, sqlite3_int64 iOfst, void *p)
 
 /*
 ** Methods for CksmVfs
 */
-static int cksmOpen(sqlite3_vfs*, const char *, sqlite3_file*, int , int *);
-static int cksmDelete(sqlite3_vfs*, const char *zName, int syncDir);
-static int cksmAccess(sqlite3_vfs*, const char *zName, int flags, int *);
-static int cksmFullPathname(sqlite3_vfs*, const char *zName, int, char *zOut);
-static void *cksmDlOpen(sqlite3_vfs*, const char *zFilename);
-static void cksmDlError(sqlite3_vfs*, int nByte, char *zErrMsg);
-static void (*cksmDlSym(sqlite3_vfs *pVfs, void *p, const char*zSym))(void);
-static void cksmDlClose(sqlite3_vfs*, void*);
-static int cksmRandomness(sqlite3_vfs*, int nByte, char *zOut);
-static int cksmSleep(sqlite3_vfs*, int microseconds);
-static int cksmCurrentTime(sqlite3_vfs*, double*);
-static int cksmGetLastError(sqlite3_vfs*, int, char *);
-static int cksmCurrentTimeInt64(sqlite3_vfs*, sqlite3_int64*);
-static int cksmSetSystemCall(sqlite3_vfs*, const char*,sqlite3_syscall_ptr);
-static sqlite3_syscall_ptr cksmGetSystemCall(sqlite3_vfs*, const char *z);
-static const char *cksmNextSystemCall(sqlite3_vfs*, const char *zName);
+static int cksmOpen(sqlite3_vfs*, const char *, sqlite3_file*, int , int *)
+static int cksmDelete(sqlite3_vfs*, const char *zName, int syncDir)
+static int cksmAccess(sqlite3_vfs*, const char *zName, int flags, int *)
+static int cksmFullPathname(sqlite3_vfs*, const char *zName, int, char *zOut)
+static void *cksmDlOpen(sqlite3_vfs*, const char *zFilename)
+static void cksmDlError(sqlite3_vfs*, int nByte, char *zErrMsg)
+static void (*cksmDlSym(sqlite3_vfs *pVfs, void *p, const char*zSym))(void)
+static void cksmDlClose(sqlite3_vfs*, void*)
+static int cksmRandomness(sqlite3_vfs*, int nByte, char *zOut)
+static int cksmSleep(sqlite3_vfs*, int microseconds)
+static int cksmCurrentTime(sqlite3_vfs*, double*)
+static int cksmGetLastError(sqlite3_vfs*, int, char *)
+static int cksmCurrentTimeInt64(sqlite3_vfs*, sqlite3_int64*)
+static int cksmSetSystemCall(sqlite3_vfs*, const char*,sqlite3_syscall_ptr)
+static sqlite3_syscall_ptr cksmGetSystemCall(sqlite3_vfs*, const char *z)
+static const char *cksmNextSystemCall(sqlite3_vfs*, const char *zName)
 
 static sqlite3_vfs cksm_vfs = {
   3,                            /* iVersion (set when registered) */
@@ -248,7 +246,7 @@ static sqlite3_vfs cksm_vfs = {
   1024,                         /* mxPathname */
   0,                            /* pNext */
   "cksmvfs",                    /* zName */
-  0,                            /* pAppData (set when registered) */ 
+  0,                            /* pAppData (set when registered) */
   cksmOpen,                     /* xOpen */
   cksmDelete,                   /* xDelete */
   cksmAccess,                   /* xAccess */
@@ -265,7 +263,7 @@ static sqlite3_vfs cksm_vfs = {
   cksmSetSystemCall,            /* xSetSystemCall */
   cksmGetSystemCall,            /* xGetSystemCall */
   cksmNextSystemCall            /* xNextSystemCall */
-};
+}
 
 static const sqlite3_io_methods cksm_io_methods = {
   3,                              /* iVersion */
@@ -287,7 +285,7 @@ static const sqlite3_io_methods cksm_io_methods = {
   cksmShmUnmap,                   /* xShmUnmap */
   cksmFetch,                      /* xFetch */
   cksmUnfetch                     /* xUnfetch */
-};
+}
 
 /* Do byte swapping on a unsigned 32-bit integer */
 #define BYTESWAP32(x) ( \
@@ -300,35 +298,33 @@ static void cksmCompute(
   u8 *a,           /* Content to be checksummed */
   int nByte,       /* Bytes of content in a[].  Must be a multiple of 8. */
   u8 *aOut         /* OUT: Final 8-byte checksum value output */
-){
-  u32 s1 = 0, s2 = 0;
-  u32 *aData = (u32*)a;
-  u32 *aEnd = (u32*)&a[nByte];
-  u32 x = 1;
+):
+    u32 s1 = 0, s2 = 0
+    u32 *aData = (u32*)a
+    u32 *aEnd = (u32*)&a[nByte]
+    u32 x = 1
 
-  assert( nByte>=8 );
-  assert( (nByte&0x00000007)==0 );
-  assert( nByte<=65536 );
+    assert( nByte>=8 )
+    assert( (nByte&0x00000007)==0 )
+    assert( nByte<=65536 )
 
-  if( 1 == *(u8*)&x ){
-    /* Little-endian */
-    do {
-      s1 += *aData++ + s2;
-      s2 += *aData++ + s1;
-    }while( aData<aEnd );
-  }else{
-    /* Big-endian */
-    do {
-      s1 += BYTESWAP32(aData[0]) + s2;
-      s2 += BYTESWAP32(aData[1]) + s1;
-      aData += 2;
-    }while( aData<aEnd );
-    s1 = BYTESWAP32(s1);
-    s2 = BYTESWAP32(s2);
-  }
-  memcpy(aOut, &s1, 4);
-  memcpy(aOut+4, &s2, 4);
-}
+    if( 1 == *(u8*)&x ):
+        /* Little-endian */
+        do:
+            s1 += *aData++ + s2
+            s2 += *aData++ + s1
+        while( aData<aEnd )
+    else:
+        /* Big-endian */
+        do:
+            s1 += BYTESWAP32(aData[0]) + s2
+            s2 += BYTESWAP32(aData[1]) + s1
+            aData += 2
+        while( aData<aEnd )
+        s1 = BYTESWAP32(s1)
+        s2 = BYTESWAP32(s2)
+    memcpy(aOut, &s1, 4)
+    memcpy(aOut+4, &s2, 4)
 
 /*
 ** SQL function:    verify_checksum(BLOB)
@@ -341,18 +337,20 @@ static void cksmVerifyFunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  int nByte;
-  u8 *data;
-  u8 cksum[8];
-  data = (u8*)sqlite3_value_blob(argv[0]);
-  if( data==0 ) return;
-  if( sqlite3_value_type(argv[0])!=SQLITE_BLOB ) return;
-  nByte = sqlite3_value_bytes(argv[0]);
-  if( nByte<512 || nByte>65536 || (nByte & (nByte-1))!=0 ) return;
-  cksmCompute(data, nByte-8, cksum);
-  sqlite3_result_int(context, memcmp(data+nByte-8,cksum,8)==0);
-}
+):
+    int nByte
+    u8 *data
+    u8 cksum[8]
+    data = (u8*)sqlite3_value_blob(argv[0])
+    if( data==0 ):
+        return
+    if( sqlite3_value_type(argv[0])!=SQLITE_BLOB ):
+        return
+    nByte = sqlite3_value_bytes(argv[0])
+    if( nByte<512 || nByte>65536 || (nByte & (nByte-1))!=0 ):
+        return
+    cksmCompute(data, nByte-8, cksum)
+    sqlite3_result_int(context, memcmp(data+nByte-8,cksum,8)==0)
 
 #ifdef SQLITE_CKSUMVFS_INIT_FUNCNAME
 /*
@@ -380,84 +378,73 @@ static void cksmInitFunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  int nByte = 8;
-  const char *zSchemaName = (const char*)sqlite3_value_text(argv[0]);
-  sqlite3 *db = sqlite3_context_db_handle(context);
-  sqlite3_file_control(db, zSchemaName, SQLITE_FCNTL_RESERVE_BYTES, &nByte);
-  /* Return NULL */
-}
+):
+    int nByte = 8
+    const char *zSchemaName = (const char*)sqlite3_value_text(argv[0])
+    sqlite3 *db = sqlite3_context_db_handle(context)
+    sqlite3_file_control(db, zSchemaName, SQLITE_FCNTL_RESERVE_BYTES, &nByte)
+    /* Return NULL */
 #endif /* SQLITE_CKSUMBFS_INIT_FUNCNAME */
 
 /*
 ** Close a cksm-file.
 */
-static int cksmClose(sqlite3_file *pFile){
-  CksmFile *p = (CksmFile *)pFile;
-  if( p->pPartner ){
-    assert( p->pPartner->pPartner==p );
-    p->pPartner->pPartner = 0;
-    p->pPartner = 0;
-  }
-  pFile = ORIGFILE(pFile);
-  return pFile->pMethods->xClose(pFile);
-}
+static int cksmClose(sqlite3_file *pFile):
+    CksmFile *p = (CksmFile *)pFile
+    if( p->pPartner ):
+        assert( p->pPartner->pPartner==p )
+        p->pPartner->pPartner = 0
+        p->pPartner = 0
+    pFile = ORIGFILE(pFile)
+    return pFile->pMethods->xClose(pFile)
 
 /*
 ** Set the computeCkSm and verifyCksm flags, if they need to be
 ** changed.
 */
-static void cksmSetFlags(CksmFile *p, int hasCorrectReserveSize){
-  if( hasCorrectReserveSize!=p->computeCksm ){
-    p->computeCksm = p->verifyCksm = hasCorrectReserveSize;
-    if( p->pPartner ){
-      p->pPartner->verifyCksm = hasCorrectReserveSize;
-      p->pPartner->computeCksm = hasCorrectReserveSize;
-    }
-  }
-}
+static void cksmSetFlags(CksmFile *p, int hasCorrectReserveSize):
+    if( hasCorrectReserveSize!=p->computeCksm ):
+        p->computeCksm = p->verifyCksm = hasCorrectReserveSize
+        if( p->pPartner ):
+            p->pPartner->verifyCksm = hasCorrectReserveSize
+            p->pPartner->computeCksm = hasCorrectReserveSize
 
 /*
 ** Read data from a cksm-file.
 */
 static int cksmRead(
-  sqlite3_file *pFile, 
-  void *zBuf, 
-  int iAmt, 
+  sqlite3_file *pFile,
+  void *zBuf,
+  int iAmt,
   sqlite_int64 iOfst
-){
-  int rc;
-  CksmFile *p = (CksmFile *)pFile;
-  pFile = ORIGFILE(pFile);
-  rc = pFile->pMethods->xRead(pFile, zBuf, iAmt, iOfst);
-  if( rc==SQLITE_OK ){
-    if( iOfst==0 && iAmt>=100 && (
-          memcmp(zBuf,"SQLite format 3",16)==0 || memcmp(zBuf,"ZV-",3)==0 
-    )){
-      u8 *d = (u8*)zBuf;
-      char hasCorrectReserveSize = (d[20]==8);
-      cksmSetFlags(p, hasCorrectReserveSize);
-    }
-    /* Verify the checksum if
-    **    (1) the size indicates that we are dealing with a complete
-    **        database page
-    **    (2) checksum verification is enabled
-    */
-    if( iAmt>=512 && (iAmt & (iAmt-1))==0   /* (1) */
-     && p->verifyCksm                       /* (2) */
-    ){
-      u8 cksum[8];
-      cksmCompute((u8*)zBuf, iAmt-8, cksum);
-      if( memcmp((u8*)zBuf+iAmt-8, cksum, 8)!=0 ){
-        sqlite3_log(SQLITE_IOERR_DATA,
-           "checksum fault offset %lld of \"%s\"",
-           iOfst, p->zFName);
-        rc = SQLITE_IOERR_DATA;
-      }
-    }
-  }
-  return rc;
-}
+):
+    int rc
+    CksmFile *p = (CksmFile *)pFile
+    pFile = ORIGFILE(pFile)
+    rc = pFile->pMethods->xRead(pFile, zBuf, iAmt, iOfst)
+    if( rc==SQLITE_OK ):
+        if( iOfst==0 && iAmt>=100 && (
+                  memcmp(zBuf,"SQLite format 3",16)==0 || memcmp(zBuf,"ZV-",3)==0
+            )):
+                u8 *d = (u8*)zBuf
+                char hasCorrectReserveSize = (d[20]==8)
+                cksmSetFlags(p, hasCorrectReserveSize)
+        /* Verify the checksum if
+            **    (1) the size indicates that we are dealing with a complete
+            **        database page
+            **    (2) checksum verification is enabled
+            */
+        if( iAmt>=512 && (iAmt & (iAmt-1))==0   /* (1) */
+             && p->verifyCksm                       /* (2) */
+            ):
+                u8 cksum[8]
+                cksmCompute((u8*)zBuf, iAmt-8, cksum)
+                if( memcmp((u8*)zBuf+iAmt-8, cksum, 8)!=0 ):
+                    sqlite3_log(SQLITE_IOERR_DATA,
+                    "checksum fault offset %lld of \"%s\"",
+                    iOfst, p->zFName)
+                    rc = SQLITE_IOERR_DATA
+    return rc
 
 /*
 ** Write data to a cksm-file.
@@ -467,135 +454,119 @@ static int cksmWrite(
   const void *zBuf,
   int iAmt,
   sqlite_int64 iOfst
-){
-  CksmFile *p = (CksmFile *)pFile;
-  pFile = ORIGFILE(pFile);
-  if( iOfst==0 && iAmt>=100 && (
-        memcmp(zBuf,"SQLite format 3",16)==0 || memcmp(zBuf,"ZV-",3)==0 
-  )){
-    u8 *d = (u8*)zBuf;
-    char hasCorrectReserveSize = (d[20]==8);
-    cksmSetFlags(p, hasCorrectReserveSize);
-  }
-  /* If the write size is appropriate for a database page and if
-  ** checksums where ever enabled, then it will be safe to compute
-  ** the checksums.  The reserve byte size might have increased, but
-  ** it will never decrease.  And because it cannot decrease, the
-  ** checksum will not overwrite anything.
-  */
-  if( iAmt>=512
-   && p->computeCksm
-  ){
-    cksmCompute((u8*)zBuf, iAmt-8, ((u8*)zBuf)+iAmt-8);
-  }
-  return pFile->pMethods->xWrite(pFile, zBuf, iAmt, iOfst);
-}
+):
+    CksmFile *p = (CksmFile *)pFile
+    pFile = ORIGFILE(pFile)
+    if( iOfst==0 && iAmt>=100 && (
+            memcmp(zBuf,"SQLite format 3",16)==0 || memcmp(zBuf,"ZV-",3)==0
+      )):
+        u8 *d = (u8*)zBuf
+        char hasCorrectReserveSize = (d[20]==8)
+        cksmSetFlags(p, hasCorrectReserveSize)
+    /* If the write size is appropriate for a database page and if
+      ** checksums where ever enabled, then it will be safe to compute
+      ** the checksums.  The reserve byte size might have increased, but
+      ** it will never decrease.  And because it cannot decrease, the
+      ** checksum will not overwrite anything.
+      */
+    if( iAmt>=512
+       && p->computeCksm
+      ):
+        cksmCompute((u8*)zBuf, iAmt-8, ((u8*)zBuf)+iAmt-8)
+    return pFile->pMethods->xWrite(pFile, zBuf, iAmt, iOfst)
 
 /*
 ** Truncate a cksm-file.
 */
-static int cksmTruncate(sqlite3_file *pFile, sqlite_int64 size){
-  pFile = ORIGFILE(pFile);
-  return pFile->pMethods->xTruncate(pFile, size);
-}
+static int cksmTruncate(sqlite3_file *pFile, sqlite_int64 size):
+    pFile = ORIGFILE(pFile)
+    return pFile->pMethods->xTruncate(pFile, size)
 
 /*
 ** Sync a cksm-file.
 */
-static int cksmSync(sqlite3_file *pFile, int flags){
-  pFile = ORIGFILE(pFile);
-  return pFile->pMethods->xSync(pFile, flags);
-}
+static int cksmSync(sqlite3_file *pFile, int flags):
+    pFile = ORIGFILE(pFile)
+    return pFile->pMethods->xSync(pFile, flags)
 
 /*
 ** Return the current file-size of a cksm-file.
 */
-static int cksmFileSize(sqlite3_file *pFile, sqlite_int64 *pSize){
-  CksmFile *p = (CksmFile *)pFile;
-  pFile = ORIGFILE(p);
-  return pFile->pMethods->xFileSize(pFile, pSize);
-}
+static int cksmFileSize(sqlite3_file *pFile, sqlite_int64 *pSize):
+    CksmFile *p = (CksmFile *)pFile
+    pFile = ORIGFILE(p)
+    return pFile->pMethods->xFileSize(pFile, pSize)
 
 /*
 ** Lock a cksm-file.
 */
-static int cksmLock(sqlite3_file *pFile, int eLock){
-  pFile = ORIGFILE(pFile);
-  return pFile->pMethods->xLock(pFile, eLock);
-}
+static int cksmLock(sqlite3_file *pFile, int eLock):
+    pFile = ORIGFILE(pFile)
+    return pFile->pMethods->xLock(pFile, eLock)
 
 /*
 ** Unlock a cksm-file.
 */
-static int cksmUnlock(sqlite3_file *pFile, int eLock){
-  pFile = ORIGFILE(pFile);
-  return pFile->pMethods->xUnlock(pFile, eLock);
-}
+static int cksmUnlock(sqlite3_file *pFile, int eLock):
+    pFile = ORIGFILE(pFile)
+    return pFile->pMethods->xUnlock(pFile, eLock)
 
 /*
 ** Check if another file-handle holds a RESERVED lock on a cksm-file.
 */
-static int cksmCheckReservedLock(sqlite3_file *pFile, int *pResOut){
-  pFile = ORIGFILE(pFile);
-  return pFile->pMethods->xCheckReservedLock(pFile, pResOut);
-}
+static int cksmCheckReservedLock(sqlite3_file *pFile, int *pResOut):
+    pFile = ORIGFILE(pFile)
+    return pFile->pMethods->xCheckReservedLock(pFile, pResOut)
 
 /*
 ** File control method. For custom operations on a cksm-file.
 */
-static int cksmFileControl(sqlite3_file *pFile, int op, void *pArg){
-  int rc;
-  CksmFile *p = (CksmFile*)pFile;
-  pFile = ORIGFILE(pFile);
-  if( op==SQLITE_FCNTL_PRAGMA ){
-    char **azArg = (char**)pArg;
-    assert( azArg[1]!=0 );
-    if( sqlite3_stricmp(azArg[1],"checksum_verification")==0 ){
-      char *zArg = azArg[2];
-      if( zArg!=0 ){
-        if( (zArg[0]>='1' && zArg[0]<='9')
-         || sqlite3_strlike("enable%",zArg,0)==0
-         || sqlite3_stricmp("yes",zArg)==0
-         || sqlite3_stricmp("on",zArg)==0
-        ){
-          p->verifyCksm = p->computeCksm;
-        }else{
-          p->verifyCksm = 0;
-        }
-        if( p->pPartner ) p->pPartner->verifyCksm = p->verifyCksm;
-      }
-      azArg[0] = sqlite3_mprintf("%d",p->verifyCksm);
-      return SQLITE_OK;
-    }else if( p->computeCksm && azArg[2]!=0
-           && sqlite3_stricmp(azArg[1], "page_size")==0 ){
-      /* Do not allow page size changes on a checksum database */
-      return SQLITE_OK;
-    }
-  }
-  rc = pFile->pMethods->xFileControl(pFile, op, pArg);
-  if( rc==SQLITE_OK && op==SQLITE_FCNTL_VFSNAME ){
-    *(char**)pArg = sqlite3_mprintf("cksm/%z", *(char**)pArg);
-  }
-  return rc;
-}
+static int cksmFileControl(sqlite3_file *pFile, int op, void *pArg):
+    int rc
+    CksmFile *p = (CksmFile*)pFile
+    pFile = ORIGFILE(pFile)
+    if( op==SQLITE_FCNTL_PRAGMA ):
+        char **azArg = (char**)pArg
+        assert( azArg[1]!=0 )
+        if( sqlite3_stricmp(azArg[1],"checksum_verification")==0 ):
+            char *zArg = azArg[2]
+            if( zArg!=0 ):
+                if( (zArg[0]>='1' && zArg[0]<='9')
+                         || sqlite3_strlike("enable%",zArg,0)==0
+                         || sqlite3_stricmp("yes",zArg)==0
+                         || sqlite3_stricmp("on",zArg)==0
+                        ):
+                            p->verifyCksm = p->computeCksm
+                else:
+                    p->verifyCksm = 0
+                if( p->pPartner ):
+                    p->pPartner->verifyCksm = p->verifyCksm
+            azArg[0] = sqlite3_mprintf("%d",p->verifyCksm)
+            return SQLITE_OK
+        else if( p->computeCksm && azArg[2]!=0
+                   && sqlite3_stricmp(azArg[1], "page_size")==0 ):
+                       /* Do not allow page size changes on a checksum database */
+                       return SQLITE_OK
+    rc = pFile->pMethods->xFileControl(pFile, op, pArg)
+    if( rc==SQLITE_OK && op==SQLITE_FCNTL_VFSNAME ):
+        *(char**)pArg = sqlite3_mprintf("cksm/%z", *(char**)pArg)
+    return rc
 
 /*
 ** Return the sector-size in bytes for a cksm-file.
 */
-static int cksmSectorSize(sqlite3_file *pFile){
-  pFile = ORIGFILE(pFile);
-  return pFile->pMethods->xSectorSize(pFile);
-}
+static int cksmSectorSize(sqlite3_file *pFile):
+    pFile = ORIGFILE(pFile)
+    return pFile->pMethods->xSectorSize(pFile)
 
 /*
 ** Return the device characteristic flags supported by a cksm-file.
 */
-static int cksmDeviceCharacteristics(sqlite3_file *pFile){
-  int devchar = 0;
-  pFile = ORIGFILE(pFile);
-  devchar = pFile->pMethods->xDeviceCharacteristics(pFile);
-  return (devchar & ~SQLITE_IOCAP_SUBPAGE_READ);
-}
+static int cksmDeviceCharacteristics(sqlite3_file *pFile):
+    int devchar = 0
+    pFile = ORIGFILE(pFile)
+    devchar = pFile->pMethods->xDeviceCharacteristics(pFile)
+    return (devchar & ~SQLITE_IOCAP_SUBPAGE_READ)
 
 /* Create a shared memory file mapping */
 static int cksmShmMap(
@@ -604,28 +575,24 @@ static int cksmShmMap(
   int pgsz,
   int bExtend,
   void volatile **pp
-){
-  pFile = ORIGFILE(pFile);
-  return pFile->pMethods->xShmMap(pFile,iPg,pgsz,bExtend,pp);
-}
+):
+    pFile = ORIGFILE(pFile)
+    return pFile->pMethods->xShmMap(pFile,iPg,pgsz,bExtend,pp)
 
 /* Perform locking on a shared-memory segment */
-static int cksmShmLock(sqlite3_file *pFile, int offset, int n, int flags){
-  pFile = ORIGFILE(pFile);
-  return pFile->pMethods->xShmLock(pFile,offset,n,flags);
-}
+static int cksmShmLock(sqlite3_file *pFile, int offset, int n, int flags):
+    pFile = ORIGFILE(pFile)
+    return pFile->pMethods->xShmLock(pFile,offset,n,flags)
 
 /* Memory barrier operation on shared memory */
-static void cksmShmBarrier(sqlite3_file *pFile){
-  pFile = ORIGFILE(pFile);
-  pFile->pMethods->xShmBarrier(pFile);
-}
+static void cksmShmBarrier(sqlite3_file *pFile):
+    pFile = ORIGFILE(pFile)
+    pFile->pMethods->xShmBarrier(pFile)
 
 /* Unmap a shared memory segment */
-static int cksmShmUnmap(sqlite3_file *pFile, int deleteFlag){
-  pFile = ORIGFILE(pFile);
-  return pFile->pMethods->xShmUnmap(pFile,deleteFlag);
-}
+static int cksmShmUnmap(sqlite3_file *pFile, int deleteFlag):
+    pFile = ORIGFILE(pFile)
+    return pFile->pMethods->xShmUnmap(pFile,deleteFlag)
 
 /* Fetch a page of a memory-mapped file */
 static int cksmFetch(
@@ -633,28 +600,23 @@ static int cksmFetch(
   sqlite3_int64 iOfst,
   int iAmt,
   void **pp
-){
-  CksmFile *p = (CksmFile *)pFile;
-  if( p->computeCksm ){
-    *pp = 0;
-    return SQLITE_OK;
-  }
-  pFile = ORIGFILE(pFile);
-  if( pFile->pMethods->iVersion>2 && pFile->pMethods->xFetch ){
-    return pFile->pMethods->xFetch(pFile, iOfst, iAmt, pp);
-  }
-  *pp = 0;
-  return SQLITE_OK;
-}
+):
+    CksmFile *p = (CksmFile *)pFile
+    if( p->computeCksm ):
+        *pp = 0
+        return SQLITE_OK
+    pFile = ORIGFILE(pFile)
+    if( pFile->pMethods->iVersion>2 && pFile->pMethods->xFetch ):
+        return pFile->pMethods->xFetch(pFile, iOfst, iAmt, pp)
+    *pp = 0
+    return SQLITE_OK
 
 /* Release a memory-mapped page */
-static int cksmUnfetch(sqlite3_file *pFile, sqlite3_int64 iOfst, void *pPage){
-  pFile = ORIGFILE(pFile);
-  if( pFile->pMethods->iVersion>2 && pFile->pMethods->xUnfetch ){
-    return pFile->pMethods->xUnfetch(pFile, iOfst, pPage);
-  }
-  return SQLITE_OK;
-}
+static int cksmUnfetch(sqlite3_file *pFile, sqlite3_int64 iOfst, void *pPage):
+    pFile = ORIGFILE(pFile)
+    if( pFile->pMethods->iVersion>2 && pFile->pMethods->xUnfetch ):
+        return pFile->pMethods->xUnfetch(pFile, iOfst, pPage)
+    return SQLITE_OK
 
 /*
 ** Open a cksm file handle.
@@ -665,158 +627,139 @@ static int cksmOpen(
   sqlite3_file *pFile,
   int flags,
   int *pOutFlags
-){
-  CksmFile *p;
-  sqlite3_file *pSubFile;
-  sqlite3_vfs *pSubVfs;
-  int rc;
-  pSubVfs = ORIGVFS(pVfs);
-  if( (flags & SQLITE_OPEN_MAIN_DB)==0 ){
-    return pSubVfs->xOpen(pSubVfs, zName, pFile, flags, pOutFlags);
-  }
-  p = (CksmFile*)pFile;
-  memset(p, 0, sizeof(*p));
-  pSubFile = ORIGFILE(pFile);
-  pFile->pMethods = &cksm_io_methods;
-  rc = pSubVfs->xOpen(pSubVfs, zName, pSubFile, flags, pOutFlags);
-  if( rc ) goto cksm_open_done;
-  p->zFName = zName;
-cksm_open_done:
-  if( rc ) pFile->pMethods = 0;
-  return rc;
-}
+):
+    CksmFile *p
+    sqlite3_file *pSubFile
+    sqlite3_vfs *pSubVfs
+    int rc
+    pSubVfs = ORIGVFS(pVfs)
+    if( (flags & SQLITE_OPEN_MAIN_DB)==0 ):
+        return pSubVfs->xOpen(pSubVfs, zName, pFile, flags, pOutFlags)
+    p = (CksmFile*)pFile
+    memset(p, 0, sizeof(*p))
+    pSubFile = ORIGFILE(pFile)
+    pFile->pMethods = &cksm_io_methods
+    rc = pSubVfs->xOpen(pSubVfs, zName, pSubFile, flags, pOutFlags)
+    if( rc ):
+        goto cksm_open_done
+    p->zFName = zName
+    cksm_open_done:
+    if( rc ):
+        pFile->pMethods = 0
+    return rc
 
 /*
 ** All other VFS methods are pass-thrus.
 */
-static int cksmDelete(sqlite3_vfs *pVfs, const char *zPath, int dirSync){
-  return ORIGVFS(pVfs)->xDelete(ORIGVFS(pVfs), zPath, dirSync);
-}
+static int cksmDelete(sqlite3_vfs *pVfs, const char *zPath, int dirSync):
+    return ORIGVFS(pVfs)->xDelete(ORIGVFS(pVfs), zPath, dirSync)
 static int cksmAccess(
-  sqlite3_vfs *pVfs, 
-  const char *zPath, 
-  int flags, 
+  sqlite3_vfs *pVfs,
+  const char *zPath,
+  int flags,
   int *pResOut
-){
-  return ORIGVFS(pVfs)->xAccess(ORIGVFS(pVfs), zPath, flags, pResOut);
-}
+):
+    return ORIGVFS(pVfs)->xAccess(ORIGVFS(pVfs), zPath, flags, pResOut)
 static int cksmFullPathname(
-  sqlite3_vfs *pVfs, 
-  const char *zPath, 
-  int nOut, 
+  sqlite3_vfs *pVfs,
+  const char *zPath,
+  int nOut,
   char *zOut
-){
-  return ORIGVFS(pVfs)->xFullPathname(ORIGVFS(pVfs),zPath,nOut,zOut);
-}
-static void *cksmDlOpen(sqlite3_vfs *pVfs, const char *zPath){
-  return ORIGVFS(pVfs)->xDlOpen(ORIGVFS(pVfs), zPath);
-}
-static void cksmDlError(sqlite3_vfs *pVfs, int nByte, char *zErrMsg){
-  ORIGVFS(pVfs)->xDlError(ORIGVFS(pVfs), nByte, zErrMsg);
-}
-static void (*cksmDlSym(sqlite3_vfs *pVfs, void *p, const char *zSym))(void){
-  return ORIGVFS(pVfs)->xDlSym(ORIGVFS(pVfs), p, zSym);
-}
-static void cksmDlClose(sqlite3_vfs *pVfs, void *pHandle){
-  ORIGVFS(pVfs)->xDlClose(ORIGVFS(pVfs), pHandle);
-}
-static int cksmRandomness(sqlite3_vfs *pVfs, int nByte, char *zBufOut){
-  return ORIGVFS(pVfs)->xRandomness(ORIGVFS(pVfs), nByte, zBufOut);
-}
-static int cksmSleep(sqlite3_vfs *pVfs, int nMicro){
-  return ORIGVFS(pVfs)->xSleep(ORIGVFS(pVfs), nMicro);
-}
-static int cksmCurrentTime(sqlite3_vfs *pVfs, double *pTimeOut){
-  return ORIGVFS(pVfs)->xCurrentTime(ORIGVFS(pVfs), pTimeOut);
-}
-static int cksmGetLastError(sqlite3_vfs *pVfs, int a, char *b){
-  return ORIGVFS(pVfs)->xGetLastError(ORIGVFS(pVfs), a, b);
-}
-static int cksmCurrentTimeInt64(sqlite3_vfs *pVfs, sqlite3_int64 *p){
-  sqlite3_vfs *pOrig = ORIGVFS(pVfs);
-  int rc;
-  assert( pOrig->iVersion>=2 );
-  if( pOrig->xCurrentTimeInt64 ){
-    rc = pOrig->xCurrentTimeInt64(pOrig, p);
-  }else{
-    double r;
-    rc = pOrig->xCurrentTime(pOrig, &r);
-    *p = (sqlite3_int64)(r*86400000.0);
-  }
-  return rc;
-}
+):
+    return ORIGVFS(pVfs)->xFullPathname(ORIGVFS(pVfs),zPath,nOut,zOut)
+static void *cksmDlOpen(sqlite3_vfs *pVfs, const char *zPath):
+    return ORIGVFS(pVfs)->xDlOpen(ORIGVFS(pVfs), zPath)
+static void cksmDlError(sqlite3_vfs *pVfs, int nByte, char *zErrMsg):
+    ORIGVFS(pVfs)->xDlError(ORIGVFS(pVfs), nByte, zErrMsg)
+static void (*cksmDlSym(sqlite3_vfs *pVfs, void *p, const char *zSym))(void):
+    return ORIGVFS(pVfs)->xDlSym(ORIGVFS(pVfs), p, zSym)
+static void cksmDlClose(sqlite3_vfs *pVfs, void *pHandle):
+    ORIGVFS(pVfs)->xDlClose(ORIGVFS(pVfs), pHandle)
+static int cksmRandomness(sqlite3_vfs *pVfs, int nByte, char *zBufOut):
+    return ORIGVFS(pVfs)->xRandomness(ORIGVFS(pVfs), nByte, zBufOut)
+static int cksmSleep(sqlite3_vfs *pVfs, int nMicro):
+    return ORIGVFS(pVfs)->xSleep(ORIGVFS(pVfs), nMicro)
+static int cksmCurrentTime(sqlite3_vfs *pVfs, double *pTimeOut):
+    return ORIGVFS(pVfs)->xCurrentTime(ORIGVFS(pVfs), pTimeOut)
+static int cksmGetLastError(sqlite3_vfs *pVfs, int a, char *b):
+    return ORIGVFS(pVfs)->xGetLastError(ORIGVFS(pVfs), a, b)
+static int cksmCurrentTimeInt64(sqlite3_vfs *pVfs, sqlite3_int64 *p):
+    sqlite3_vfs *pOrig = ORIGVFS(pVfs)
+    int rc
+    assert( pOrig->iVersion>=2 )
+    if( pOrig->xCurrentTimeInt64 ):
+        rc = pOrig->xCurrentTimeInt64(pOrig, p)
+    else:
+        double r
+        rc = pOrig->xCurrentTime(pOrig, &r)
+        *p = (sqlite3_int64)(r*86400000.0)
+    return rc
 static int cksmSetSystemCall(
   sqlite3_vfs *pVfs,
   const char *zName,
   sqlite3_syscall_ptr pCall
-){
-  return ORIGVFS(pVfs)->xSetSystemCall(ORIGVFS(pVfs),zName,pCall);
-}
+):
+    return ORIGVFS(pVfs)->xSetSystemCall(ORIGVFS(pVfs),zName,pCall)
 static sqlite3_syscall_ptr cksmGetSystemCall(
   sqlite3_vfs *pVfs,
   const char *zName
-){
-  return ORIGVFS(pVfs)->xGetSystemCall(ORIGVFS(pVfs),zName);
-}
-static const char *cksmNextSystemCall(sqlite3_vfs *pVfs, const char *zName){
-  return ORIGVFS(pVfs)->xNextSystemCall(ORIGVFS(pVfs), zName);
-}
+):
+    return ORIGVFS(pVfs)->xGetSystemCall(ORIGVFS(pVfs),zName)
+static const char *cksmNextSystemCall(sqlite3_vfs *pVfs, const char *zName):
+    return ORIGVFS(pVfs)->xNextSystemCall(ORIGVFS(pVfs), zName)
 
 /* Register the verify_checksum() SQL function.
 */
 static int cksmRegisterFunc(
-  sqlite3 *db, 
-  char **pzErrMsg, 
+  sqlite3 *db,
+  char **pzErrMsg,
   const sqlite3_api_routines *pApi
-){
-  int rc;
-  if( db==0 ) return SQLITE_OK;
-  rc = sqlite3_create_function(db, "verify_checksum", 1,
+):
+    int rc
+    if( db==0 ):
+        return SQLITE_OK
+    rc = sqlite3_create_function(db, "verify_checksum", 1,
                    SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
-                   0, cksmVerifyFunc, 0, 0);
-#ifdef SQLITE_CKSUMVFS_INIT_FUNCNAME
-  (void)sqlite3_create_function(db, SQLITE_CKSUMVFS_INIT_FUNCNAME, 1,
+                   0, cksmVerifyFunc, 0, 0)
+    #ifdef SQLITE_CKSUMVFS_INIT_FUNCNAME
+    (void)sqlite3_create_function(db, SQLITE_CKSUMVFS_INIT_FUNCNAME, 1,
                    SQLITE_UTF8|SQLITE_DIRECTONLY,
-                   0, cksmInitFunc, 0, 0);
-#endif
-  return rc;
-}
+                   0, cksmInitFunc, 0, 0)
+    #endif
+    return rc
 
 /*
 ** Register the cksum VFS as the default VFS for the system.
 ** Also make arrangements to automatically register the "verify_checksum()"
 ** SQL function on each new database connection.
 */
-static int cksmRegisterVfs(void){
-  int rc = SQLITE_OK;
-  sqlite3_vfs *pOrig = sqlite3_vfs_find(0);
-  if( pOrig==0 ) return SQLITE_ERROR;
-  if( sqlite3_vfs_find("cksmvfs")!=0 ) return SQLITE_OK;
-  cksm_vfs.iVersion = pOrig->iVersion;
-  cksm_vfs.pAppData = pOrig;
-  cksm_vfs.szOsFile = pOrig->szOsFile + sizeof(CksmFile);
-  rc = sqlite3_vfs_register(&cksm_vfs, 1);
-  if( rc==SQLITE_OK ){
-    rc = sqlite3_auto_extension((void(*)(void))cksmRegisterFunc);
-  }
-  return rc;
-}
+static int cksmRegisterVfs(void):
+    int rc = SQLITE_OK
+    sqlite3_vfs *pOrig = sqlite3_vfs_find(0)
+    if( pOrig==0 ):
+        return SQLITE_ERROR
+    if( sqlite3_vfs_find("cksmvfs")!=0 ):
+        return SQLITE_OK
+    cksm_vfs.iVersion = pOrig->iVersion
+    cksm_vfs.pAppData = pOrig
+    cksm_vfs.szOsFile = pOrig->szOsFile + sizeof(CksmFile)
+    rc = sqlite3_vfs_register(&cksm_vfs, 1)
+    if( rc==SQLITE_OK ):
+        rc = sqlite3_auto_extension((void(*)(void))cksmRegisterFunc)
+    return rc
 
 #if defined(SQLITE_CKSUMVFS_STATIC)
 /* This variant of the initializer runs when the extension is
 ** statically linked.
 */
-int sqlite3_register_cksumvfs(const char *NotUsed){
-  (void)NotUsed;
-  return cksmRegisterVfs();
-}
-int sqlite3_unregister_cksumvfs(void){
-  if( sqlite3_vfs_find("cksmvfs") ){
-    sqlite3_vfs_unregister(&cksm_vfs);
-    sqlite3_cancel_auto_extension((void(*)(void))cksmRegisterFunc);
-  }
-  return SQLITE_OK;
-}
+int sqlite3_register_cksumvfs(const char *NotUsed):
+    (void)NotUsed
+    return cksmRegisterVfs()
+int sqlite3_unregister_cksumvfs(void):
+    if( sqlite3_vfs_find("cksmvfs") ):
+        sqlite3_vfs_unregister(&cksm_vfs)
+        sqlite3_cancel_auto_extension((void(*)(void))cksmRegisterFunc)
+    return SQLITE_OK
 #endif /* defined(SQLITE_CKSUMVFS_STATIC */
 
 #if !defined(SQLITE_CKSUMVFS_STATIC)
@@ -826,23 +769,22 @@ int sqlite3_unregister_cksumvfs(void){
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
-/* 
+/*
 ** This routine is called by sqlite3_load_extension() when the
 ** extension is first loaded.
 ***/
 int sqlite3_cksumvfs_init(
-  sqlite3 *db, 
-  char **pzErrMsg, 
+  sqlite3 *db,
+  char **pzErrMsg,
   const sqlite3_api_routines *pApi
-){
-  int rc;
-  SQLITE_EXTENSION_INIT2(pApi);
-  (void)pzErrMsg; /* not used */
-  rc = cksmRegisterFunc(db, 0, 0);
-  if( rc==SQLITE_OK ){
-    rc = cksmRegisterVfs();
-  }
-  if( rc==SQLITE_OK ) rc = SQLITE_OK_LOAD_PERMANENTLY;
-  return rc;
-}
+):
+    int rc
+    SQLITE_EXTENSION_INIT2(pApi)
+    (void)pzErrMsg /* not used */
+    rc = cksmRegisterFunc(db, 0, 0)
+    if( rc==SQLITE_OK ):
+        rc = cksmRegisterVfs()
+    if( rc==SQLITE_OK ):
+        rc = SQLITE_OK_LOAD_PERMANENTLY
+    return rc
 #endif /* !defined(SQLITE_CKSUMVFS_STATIC) */

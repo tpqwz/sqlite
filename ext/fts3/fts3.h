@@ -22,5 +22,6 @@ extern "C" {
 int sqlite3Fts3Init(sqlite3 *db);
 
 #ifdef __cplusplus
-}  /* extern "C" */
+}
+/* extern "C" */
 #endif  /* __cplusplus */

@@ -65,7 +65,6 @@
 ** adjustments to the tokenizer logic in this module.
 */
 
-
 /* Character classes for tokenizing
 **
 ** In the sqlite3GetToken() function, a switch() on aiClass[c] is implemented
@@ -104,27 +103,27 @@
 #define CC_ILLEGAL   27    /* Illegal character */
 
 static const unsigned char aiClass[] = {
-/*         x0  x1  x2  x3  x4  x5  x6  x7  x8  x9  xa  xb  xc  xd  xe  xf */
-/* 0x */   27, 27, 27, 27, 27, 27, 27, 27, 27,  7,  7, 27,  7,  7, 27, 27,
-/* 1x */   27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
-/* 2x */    7, 15,  8,  5,  4, 22, 24,  8, 17, 18, 21, 20, 23, 11, 26, 16,
-/* 3x */    3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  5, 19, 12, 14, 13,  6,
-/* 4x */    5,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
-/* 5x */    1,  1,  1,  1,  1,  1,  1,  1,  0,  1,  1,  9, 27, 27, 27,  1,
-/* 6x */    8,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
-/* 7x */    1,  1,  1,  1,  1,  1,  1,  1,  0,  1,  1, 27, 10, 27, 25, 27,
-/* 8x */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-/* 9x */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-/* Ax */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-/* Bx */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-/* Cx */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-/* Dx */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-/* Ex */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-/* Fx */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2
-};
+    /*         x0  x1  x2  x3  x4  x5  x6  x7  x8  x9  xa  xb  xc  xd  xe  xf */
+    /* 0x */   27, 27, 27, 27, 27, 27, 27, 27, 27,  7,  7, 27,  7,  7, 27, 27,
+    /* 1x */   27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
+    /* 2x */    7, 15,  8,  5,  4, 22, 24,  8, 17, 18, 21, 20, 23, 11, 26, 16,
+    /* 3x */    3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  5, 19, 12, 14, 13,  6,
+    /* 4x */    5,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+    /* 5x */    1,  1,  1,  1,  1,  1,  1,  1,  0,  1,  1,  9, 27, 27, 27,  1,
+    /* 6x */    8,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+    /* 7x */    1,  1,  1,  1,  1,  1,  1,  1,  0,  1,  1, 27, 10, 27, 25, 27,
+    /* 8x */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
+    /* 9x */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
+    /* Ax */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
+    /* Bx */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
+    /* Cx */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
+    /* Dx */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
+    /* Ex */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
+    /* Fx */    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2
+}
 
 /* An array to map all upper-case characters into their corresponding
-** lower-case character. 
+** lower-case character.
 **
 ** SQLite only considers US-ASCII (or EBCDIC) characters.  We do not
 ** handle case conversions for the UTF character set since the tables
@@ -146,7 +145,7 @@ static const unsigned char sqlite3UpperToLower[] = {
     216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,
     234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,
     252,253,254,255
-};
+}
 
 /*
 ** The following 256 byte lookup table is used to support SQLites built-in
@@ -171,7 +170,7 @@ static const unsigned char sqlite3UpperToLower[] = {
 ** The equivalent of tolower() is implemented using the sqlite3UpperToLower[]
 ** array. tolower() is used more often than toupper() by SQLite.
 **
-** Bit 0x40 is set if the character is non-alphanumeric and can be used in an 
+** Bit 0x40 is set if the character is non-alphanumeric and can be used in an
 ** SQLite identifier.  Identifiers are alphanumerics, "_", "$", and any
 ** non-ASCII UTF character. Hence the test for whether or not a character is
 ** part of an identifier is 0x46.
@@ -212,7 +211,7 @@ static const unsigned char sqlite3CtypeMap[256] = {
   0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40,  /* e8..ef    ........ */
   0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40,  /* f0..f7    ........ */
   0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40   /* f8..ff    ........ */
-};
+}
 #define sqlite3Toupper(x)   ((x)&~(sqlite3CtypeMap[(unsigned char)(x)]&0x20))
 #define sqlite3Isspace(x)   (sqlite3CtypeMap[(unsigned char)(x)]&0x01)
 #define sqlite3Isalnum(x)   (sqlite3CtypeMap[(unsigned char)(x)]&0x06)
@@ -222,20 +221,19 @@ static const unsigned char sqlite3CtypeMap[256] = {
 #define sqlite3Tolower(x)   (sqlite3UpperToLower[(unsigned char)(x)])
 #define sqlite3Isquote(x)   (sqlite3CtypeMap[(unsigned char)(x)]&0x80)
 
-
 /*
 ** If X is a character that can be used in an identifier then
 ** IdChar(X) will be true.  Otherwise it is false.
 **
 ** For ASCII, any character with the high-order bit set is
-** allowed in an identifier.  For 7-bit characters, 
+** allowed in an identifier.  For 7-bit characters,
 ** sqlite3IsIdChar[X] must be 1.
 **
 ** For EBCDIC, the rules are more complex but have the same
 ** end result.
 **
 ** Ticket #1066.  the SQL standard does not allow '$' in the
-** middle of identifiers.  But many SQL implementations do. 
+** middle of identifiers.  But many SQL implementations do.
 ** SQLite will allow '$' in identifiers for compatibility.
 ** But the feature is undocumented.
 */
@@ -299,349 +297,371 @@ static const unsigned char sqlite3CtypeMap[256] = {
 #endif
 
 /*
-** Return the length (in bytes) of the token that begins at z[0]. 
+** Return the length (in bytes) of the token that begins at z[0].
 ** Store the token type in *tokenType before returning.
 */
-static sqlite3_int64 sqlite3GetToken(const unsigned char *z, int *tokenType){
-  sqlite3_int64 i;
-  int c;
-  switch( aiClass[*z] ){  /* Switch on the character-class of the first byte
-                          ** of the token. See the comment on the CC_ defines
-                          ** above. */
-    case CC_SPACE: {
-      for(i=1; sqlite3Isspace(z[i]); i++){}
-      *tokenType = TK_SPACE;
-      return i;
-    }
-    case CC_MINUS: {
-      if( z[1]=='-' ){
-        for(i=2; (c=z[i])!=0 && c!='\n'; i++){}
-        *tokenType = TK_SPACE;
-        return i;
-      }
-      *tokenType = TK_MINUS;
-      return 1;
-    }
-    case CC_LP: {
-      *tokenType = TK_LP;
-      return 1;
-    }
-    case CC_RP: {
-      *tokenType = TK_RP;
-      return 1;
-    }
-    case CC_SEMI: {
-      *tokenType = TK_SEMI;
-      return 1;
-    }
-    case CC_PLUS: {
-      *tokenType = TK_PLUS;
-      return 1;
-    }
-    case CC_STAR: {
-      *tokenType = TK_STAR;
-      return 1;
-    }
-    case CC_SLASH: {
-      if( z[1]!='*' || z[2]==0 ){
-        *tokenType = TK_SLASH;
-        return 1;
-      }
-      for(i=3, c=z[2]; (c!='*' || z[i]!='/') && (c=z[i])!=0; i++){}
-      if( c ) i++;
-      *tokenType = TK_SPACE;
-      return i;
-    }
-    case CC_PERCENT: {
-      *tokenType = TK_REM;
-      return 1;
-    }
-    case CC_EQ: {
-      *tokenType = TK_EQ;
-      return 1 + (z[1]=='=');
-    }
-    case CC_LT: {
-      if( (c=z[1])=='=' ){
-        *tokenType = TK_LE;
-        return 2;
-      }else if( c=='>' ){
-        *tokenType = TK_NE;
-        return 2;
-      }else if( c=='<' ){
-        *tokenType = TK_LSHIFT;
-        return 2;
-      }else{
-        *tokenType = TK_LT;
-        return 1;
-      }
-    }
-    case CC_GT: {
-      if( (c=z[1])=='=' ){
-        *tokenType = TK_GE;
-        return 2;
-      }else if( c=='>' ){
-        *tokenType = TK_RSHIFT;
-        return 2;
-      }else{
-        *tokenType = TK_GT;
-        return 1;
-      }
-    }
-    case CC_BANG: {
-      if( z[1]!='=' ){
-        *tokenType = TK_ILLEGAL;
-        return 1;
-      }else{
-        *tokenType = TK_NE;
-        return 2;
-      }
-    }
-    case CC_PIPE: {
-      if( z[1]!='|' ){
-        *tokenType = TK_BITOR;
-        return 1;
-      }else{
-        *tokenType = TK_CONCAT;
-        return 2;
-      }
-    }
-    case CC_COMMA: {
-      *tokenType = TK_COMMA;
-      return 1;
-    }
-    case CC_AND: {
-      *tokenType = TK_BITAND;
-      return 1;
-    }
-    case CC_TILDA: {
-      *tokenType = TK_BITNOT;
-      return 1;
-    }
-    case CC_QUOTE: {
-      int delim = z[0];
-      testcase( delim=='`' );
-      testcase( delim=='\'' );
-      testcase( delim=='"' );
-      for(i=1; (c=z[i])!=0; i++){
-        if( c==delim ){
-          if( z[i+1]==delim ){
-            i++;
-          }else{
-            break;
-          }
-        }
-      }
-      if( c=='\'' ){
-        *tokenType = TK_STRING;
-        return i+1;
-      }else if( c!=0 ){
-        *tokenType = TK_ID;
-        return i+1;
-      }else{
-        *tokenType = TK_ILLEGAL;
-        return i;
-      }
-    }
-    case CC_DOT: {
-      if( !sqlite3Isdigit(z[1]) ){
-        *tokenType = TK_DOT;
-        return 1;
-      }
-      /* If the next character is a digit, this is a floating point
-      ** number that begins with ".".  Fall thru into the next case */
-      /* no break */ deliberate_fall_through
-    }
-    case CC_DIGIT: {
-      *tokenType = TK_INTEGER;
-      if( z[0]=='0' && (z[1]=='x' || z[1]=='X') && sqlite3Isxdigit(z[2]) ){
-        for(i=3; sqlite3Isxdigit(z[i]); i++){}
-        return i;
-      }
-      for(i=0; sqlite3Isdigit(z[i]); i++){}
-      if( z[i]=='.' ){
-        i++;
-        while( sqlite3Isdigit(z[i]) ){ i++; }
-        *tokenType = TK_FLOAT;
-      }
-      if( (z[i]=='e' || z[i]=='E') &&
-           ( sqlite3Isdigit(z[i+1]) 
-            || ((z[i+1]=='+' || z[i+1]=='-') && sqlite3Isdigit(z[i+2]))
-           )
-      ){
-        i += 2;
-        while( sqlite3Isdigit(z[i]) ){ i++; }
-        *tokenType = TK_FLOAT;
-      }
-      while( IdChar(z[i]) ){
-        *tokenType = TK_ILLEGAL;
-        i++;
-      }
-      return i;
-    }
-    case CC_QUOTE2: {
-      for(i=1, c=z[0]; c!=']' && (c=z[i])!=0; i++){}
-      *tokenType = c==']' ? TK_ID : TK_ILLEGAL;
-      return i;
-    }
-    case CC_VARNUM: {
-      *tokenType = TK_VARIABLE;
-      for(i=1; sqlite3Isdigit(z[i]); i++){}
-      return i;
-    }
-    case CC_DOLLAR:
-    case CC_VARALPHA: {
-      int n = 0;
-      testcase( z[0]=='$' );  testcase( z[0]=='@' );
-      testcase( z[0]==':' );  testcase( z[0]=='#' );
-      *tokenType = TK_VARIABLE;
-      for(i=1; (c=z[i])!=0; i++){
-        if( IdChar(c) ){
-          n++;
-        }else if( c=='(' && n>0 ){
-          do{
-            i++;
-          }while( (c=z[i])!=0 && !sqlite3Isspace(c) && c!=')' );
-          if( c==')' ){
-            i++;
-          }else{
-            *tokenType = TK_ILLEGAL;
-          }
-          break;
-        }else if( c==':' && z[i+1]==':' ){
-          i++;
-        }else{
-          break;
-        }
-      }
-      if( n==0 ) *tokenType = TK_ILLEGAL;
-      return i;
-    }
-    case CC_KYWD: {
-      for(i=1; aiClass[z[i]]<=CC_KYWD; i++){}
-      if( IdChar(z[i]) ){
-        /* This token started out using characters that can appear in keywords,
-        ** but z[i] is a character not allowed within keywords, so this must
-        ** be an identifier instead */
-        i++;
-        break;
-      }
-      *tokenType = TK_ID;
-      return i;
-    }
-    case CC_X: {
-      testcase( z[0]=='x' ); testcase( z[0]=='X' );
-      if( z[1]=='\'' ){
-        *tokenType = TK_BLOB;
-        for(i=2; sqlite3Isxdigit(z[i]); i++){}
-        if( z[i]!='\'' || i%2 ){
-          *tokenType = TK_ILLEGAL;
-          while( z[i] && z[i]!='\'' ){ i++; }
-        }
-        if( z[i] ) i++;
-        return i;
-      }
-      /* If it is not a BLOB literal, then it must be an ID, since no
-      ** SQL keywords start with the letter 'x'.  Fall through */
-      /* no break */ deliberate_fall_through
-    }
-    case CC_ID: {
-      i = 1;
-      break;
-    }
-    default: {
-      *tokenType = TK_ILLEGAL;
-      return 1;
-    }
-  }
-  while( IdChar(z[i]) ){ i++; }
-  *tokenType = TK_ID;
-  return i;
-}
+static sqlite3_int64 sqlite3GetToken(const unsigned char *z, int *tokenType):
+    sqlite3_int64 i
+    int c
+    switch( aiClass[*z] ):
+        /* Switch on the character-class of the first byte
+                                  ** of the token. See the comment on the CC_ defines
+                                  ** above. */
+        case CC_SPACE:
+            {
+                for(i=1; sqlite3Isspace(z[i]); i++):
+                *tokenType = TK_SPACE
+                return i
+            }
+        case CC_MINUS:
+            {
+                if( z[1]=='-' ):
+                    for(i=2; (c=z[i])!=0 && c!='\n'; i++):
+                    *tokenType = TK_SPACE
+                    return i
+                *tokenType = TK_MINUS
+                return 1
+            }
+        case CC_LP:
+            {
+                *tokenType = TK_LP
+                return 1
+            }
+        case CC_RP:
+            {
+                *tokenType = TK_RP
+                return 1
+            }
+        case CC_SEMI:
+            {
+                *tokenType = TK_SEMI
+                return 1
+            }
+        case CC_PLUS:
+            {
+                *tokenType = TK_PLUS
+                return 1
+            }
+        case CC_STAR:
+            {
+                *tokenType = TK_STAR
+                return 1
+            }
+        case CC_SLASH:
+            {
+                if( z[1]!='*' || z[2]==0 ):
+                    *tokenType = TK_SLASH
+                    return 1
+                for(i=3, c=z[2]; (c!='*' || z[i]!='/') && (c=z[i])!=0; i++):
+                if( c ):
+                    i++
+                *tokenType = TK_SPACE
+                return i
+            }
+        case CC_PERCENT:
+            {
+                *tokenType = TK_REM
+                return 1
+            }
+        case CC_EQ:
+            {
+                *tokenType = TK_EQ
+                return 1 + (z[1]=='=')
+            }
+        case CC_LT:
+            {
+                if( (c=z[1])=='=' ):
+                    *tokenType = TK_LE
+                    return 2
+                else if( c=='>' ):
+                    *tokenType = TK_NE
+                    return 2
+                else if( c=='<' ):
+                    *tokenType = TK_LSHIFT
+                    return 2
+                else:
+                    *tokenType = TK_LT
+                    return 1
+            }
+        case CC_GT:
+            {
+                if( (c=z[1])=='=' ):
+                    *tokenType = TK_GE
+                    return 2
+                else if( c=='>' ):
+                    *tokenType = TK_RSHIFT
+                    return 2
+                else:
+                    *tokenType = TK_GT
+                    return 1
+            }
+        case CC_BANG:
+            {
+                if( z[1]!='=' ):
+                    *tokenType = TK_ILLEGAL
+                    return 1
+                else:
+                    *tokenType = TK_NE
+                    return 2
+            }
+        case CC_PIPE:
+            {
+                if( z[1]!='|' ):
+                    *tokenType = TK_BITOR
+                    return 1
+                else:
+                    *tokenType = TK_CONCAT
+                    return 2
+            }
+        case CC_COMMA:
+            {
+                *tokenType = TK_COMMA
+                return 1
+            }
+        case CC_AND:
+            {
+                *tokenType = TK_BITAND
+                return 1
+            }
+        case CC_TILDA:
+            {
+                *tokenType = TK_BITNOT
+                return 1
+            }
+        case CC_QUOTE:
+            {
+                int delim = z[0]
+                testcase( delim=='`' )
+                testcase( delim=='\'' )
+                testcase( delim=='"' )
+                for(i=1; (c=z[i])!=0; i++):
+                    if( c==delim ):
+                        if( z[i+1]==delim ):
+                            i++
+                        else:
+                            break
+                if( c=='\'' ):
+                    *tokenType = TK_STRING
+                    return i+1
+                else if( c!=0 ):
+                    *tokenType = TK_ID
+                    return i+1
+                else:
+                    *tokenType = TK_ILLEGAL
+                    return i
+            }
+        case CC_DOT:
+            {
+                if( !sqlite3Isdigit(z[1]) ):
+                    *tokenType = TK_DOT
+                    return 1
+                /* If the next character is a digit, this is a floating point
+                      ** number that begins with ".".  Fall thru into the next case */
+                /* no break */
+                deliberate_fall_through
+            }
+        case CC_DIGIT:
+            {
+                *tokenType = TK_INTEGER
+                if( z[0]=='0' && (z[1]=='x' || z[1]=='X') && sqlite3Isxdigit(z[2]) ):
+                    for(i=3; sqlite3Isxdigit(z[i]); i++):
+                    return i
+                for(i=0; sqlite3Isdigit(z[i]); i++):
+                if( z[i]=='.' ):
+                    i++
+                    while( sqlite3Isdigit(z[i]) ):
+                        i++
+                    *tokenType = TK_FLOAT
+                if( (z[i]=='e' || z[i]=='E') &&
+                           ( sqlite3Isdigit(z[i+1])
+                            || ((z[i+1]=='+' || z[i+1]=='-') && sqlite3Isdigit(z[i+2]))
+                           )
+                      ):
+                          i += 2
+                          while( sqlite3Isdigit(z[i]) ):
+                              i++
+                          *tokenType = TK_FLOAT
+                while( IdChar(z[i]) ):
+                    *tokenType = TK_ILLEGAL
+                    i++
+                return i
+            }
+        case CC_QUOTE2:
+            {
+                for(i=1, c=z[0]; c!=']' && (c=z[i])!=0; i++):
+                *tokenType = c==']' ? TK_ID : TK_ILLEGAL
+                return i
+            }
+        case CC_VARNUM:
+            {
+                *tokenType = TK_VARIABLE
+                for(i=1; sqlite3Isdigit(z[i]); i++):
+                return i
+            }
+        case CC_DOLLAR:
+        case CC_VARALPHA:
+            {
+                int n = 0
+                testcase( z[0]=='$' )
+                testcase( z[0]=='@' )
+                testcase( z[0]==':' )
+                testcase( z[0]=='#' )
+                *tokenType = TK_VARIABLE
+                for(i=1; (c=z[i])!=0; i++):
+                    if( IdChar(c) ):
+                        n++
+                    else if( c=='(' && n>0 ):
+                        do:
+                            i++
+                        while( (c=z[i])!=0 && !sqlite3Isspace(c) && c!=')' )
+                        if( c==')' ):
+                            i++
+                        else:
+                            *tokenType = TK_ILLEGAL
+                        break
+                    else if( c==':' && z[i+1]==':' ):
+                        i++
+                    else:
+                        break
+                if( n==0 ):
+                    *tokenType = TK_ILLEGAL
+                return i
+            }
+        case CC_KYWD:
+            {
+                for(i=1; aiClass[z[i]]<=CC_KYWD; i++):
+                if( IdChar(z[i]) ):
+                    /* This token started out using characters that can appear in keywords,
+                            ** but z[i] is a character not allowed within keywords, so this must
+                            ** be an identifier instead */
+                    i++
+                    break
+                *tokenType = TK_ID
+                return i
+            }
+        case CC_X:
+            {
+                testcase( z[0]=='x' )
+                testcase( z[0]=='X' )
+                if( z[1]=='\'' ):
+                    *tokenType = TK_BLOB
+                    for(i=2; sqlite3Isxdigit(z[i]); i++):
+                    if( z[i]!='\'' || i%2 ):
+                        *tokenType = TK_ILLEGAL
+                        while( z[i] && z[i]!='\'' ):
+                            i++
+                    if( z[i] ):
+                        i++
+                    return i
+                /* If it is not a BLOB literal, then it must be an ID, since no
+                      ** SQL keywords start with the letter 'x'.  Fall through */
+                /* no break */
+                deliberate_fall_through
+            }
+        case CC_ID:
+            {
+                i = 1
+                break
+            }
+        default:
+            {
+                *tokenType = TK_ILLEGAL
+                return 1
+            }
+    while( IdChar(z[i]) ):
+        i++
+    *tokenType = TK_ID
+    return i
 
-char *sqlite3_normalize(const char *zSql){
-  char *z;              /* The output string */
-  sqlite3_int64 nZ;     /* Size of the output string in bytes */
-  sqlite3_int64 nSql;   /* Size of the input string in bytes */
-  int i;                /* Next character to read from zSql[] */
-  int j;                /* Next slot to fill in on z[] */
-  int tokenType;        /* Type of the next token */
-  sqlite3_int64 n;      /* Size of the next token */
-  int k;                /* Loop counter */
+char *sqlite3_normalize(const char *zSql):
+    char *z /* The output string */
+    sqlite3_int64 nZ /* Size of the output string in bytes */
+    sqlite3_int64 nSql /* Size of the input string in bytes */
+    int i /* Next character to read from zSql[] */
+    int j /* Next slot to fill in on z[] */
+    int tokenType /* Type of the next token */
+    sqlite3_int64 n /* Size of the next token */
+    int k /* Loop counter */
 
-  nSql = strlen(zSql);
-  nZ = nSql;
-  z = sqlite3_malloc64( nZ+2 );
-  if( z==0 ) return 0;
-  for(i=j=0; zSql[i]; i += n){
-    n = sqlite3GetToken((unsigned char*)zSql+i, &tokenType);
-    switch( tokenType ){
-      case TK_SPACE: {
-        break;
-      }
-      case TK_ERROR: {
-        sqlite3_free(z);
-        return 0;
-      }
-      case TK_LITERAL: {
-        z[j++] = '?';
-        break;
-      }
-      case TK_PUNCT:
-      case TK_NAME: {
-        if( n==4 && sqlite3_strnicmp(zSql+i,"NULL",4)==0 ){
-          if( (j>=3 && strncmp(z+j-2,"is",2)==0 && !IdChar(z[j-3]))
-           || (j>=4 && strncmp(z+j-3,"not",3)==0 && !IdChar(z[j-4]))
-          ){
-            /* NULL is a keyword in this case, not a literal value */
-          }else{
-            /* Here the NULL is a literal value */
-            z[j++] = '?';
-            break;
-          }
-        }
-        if( j>0 && IdChar(z[j-1]) && IdChar(zSql[i]) ) z[j++] = ' ';
-        for(k=0; k<n; k++){
-          z[j++] = sqlite3Tolower(zSql[i+k]);
-        }
-        break;
-      }
-    }
-  }
-  while( j>0 && z[j-1]==' ' ){ j--; }
-  if( j>0 && z[j-1]!=';' ){ z[j++] = ';'; }
-  z[j] = 0;
+    nSql = strlen(zSql)
+    nZ = nSql
+    z = sqlite3_malloc64( nZ+2 )
+    if( z==0 ):
+        return 0
+    for(i=j=0; zSql[i]; i += n):
+        n = sqlite3GetToken((unsigned char*)zSql+i, &tokenType)
+        switch( tokenType ):
+            case TK_SPACE:
+                {
+                    break
+                }
+            case TK_ERROR:
+                {
+                    sqlite3_free(z)
+                    return 0
+                }
+            case TK_LITERAL:
+                {
+                    z[j++] = '?'
+                    break
+                }
+            case TK_PUNCT:
+            case TK_NAME:
+                {
+                    if( n==4 && sqlite3_strnicmp(zSql+i,"NULL",4)==0 ):
+                        if( (j>=3 && strncmp(z+j-2,"is",2)==0 && !IdChar(z[j-3]))
+                                   || (j>=4 && strncmp(z+j-3,"not",3)==0 && !IdChar(z[j-4]))
+                                  ):
+                                      /* NULL is a keyword in this case, not a literal value */
+                        else:
+                            /* Here the NULL is a literal value */
+                            z[j++] = '?'
+                            break
+                    if( j>0 && IdChar(z[j-1]) && IdChar(zSql[i]) ):
+                        z[j++] = ' '
+                    for(k=0; k<n; k++):
+                        z[j++] = sqlite3Tolower(zSql[i+k])
+                    break
+                }
+    while( j>0 && z[j-1]==' ' ):
+        j--
+    if( j>0 && z[j-1]!=';' ):
+        z[j++] = ';'
+    z[j] = 0
 
-  /* Make a second pass converting "in(...)" where the "..." is not a
-  ** SELECT statement into "in(?,?,?)" */
-  for(i=0; i<j; i=n){
-    char *zIn = strstr(z+i, "in(");
-    int nParen;
-    if( zIn==0 ) break;
-    n = (int)(zIn-z)+3;  /* Index of first char past "in(" */
-    if( n>3 && IdChar(zIn[-1]) ) continue;
-    if( strncmp(zIn, "in(select",9)==0 && !IdChar(zIn[9]) ) continue;
-    if( strncmp(zIn, "in(with",7)==0 && !IdChar(zIn[7]) ) continue;
-    for(nParen=1, k=0; z[n+k]; k++){
-      if( z[n+k]=='(' ) nParen++;
-      if( z[n+k]==')' ){
-        nParen--;
-        if( nParen==0 ) break;
-      }
-    }
-    /* k is the number of bytes in the "..." within "in(...)" */
-    if( k<5 ){
-      z = sqlite3_realloc64(z, j+(5-k)+1);
-      if( z==0 ) return 0;
-      memmove(z+n+5, z+n+k, j-(n+k));
-    }else if( k>5 ){
-      memmove(z+n+5, z+n+k, j-(n+k));
-    }
-    j = j-k+5;
-    z[j] = 0;
-    memcpy(z+n, "?,?,?", 5);
-  }
-  return z;
-}
+    /* Make a second pass converting "in(...)" where the "..." is not a
+      ** SELECT statement into "in(?,?,?)" */
+    for(i=0; i<j; i=n):
+        char *zIn = strstr(z+i, "in(")
+        int nParen
+        if( zIn==0 ):
+            break
+        n = (int)(zIn-z)+3 /* Index of first char past "in(" */
+        if( n>3 && IdChar(zIn[-1]) ):
+            continue
+        if( strncmp(zIn, "in(select",9)==0 && !IdChar(zIn[9]) ):
+            continue
+        if( strncmp(zIn, "in(with",7)==0 && !IdChar(zIn[7]) ):
+            continue
+        for(nParen=1, k=0; z[n+k]; k++):
+            if( z[n+k]=='(' ):
+                nParen++
+            if( z[n+k]==')' ):
+                nParen--
+                if( nParen==0 ):
+                    break
+        /* k is the number of bytes in the "..." within "in(...)" */
+        if( k<5 ):
+            z = sqlite3_realloc64(z, j+(5-k)+1)
+            if( z==0 ):
+                return 0
+            memmove(z+n+5, z+n+k, j-(n+k))
+        else if( k>5 ):
+            memmove(z+n+5, z+n+k, j-(n+k))
+        j = j-k+5
+        z[j] = 0
+        memcpy(z+n, "?,?,?", 5)
+    return z
 
 /*
 ** For testing purposes, or to build a stand-alone SQL normalizer program,
@@ -658,65 +678,58 @@ char *sqlite3_normalize(const char *zSql){
 ** Break zIn up into separate SQL statements and run sqlite3_normalize()
 ** on each one.  Print the result of each run.
 */
-static void normalizeFile(char *zIn){
-  int i;
-  if( zIn==0 ) return;
-  for(i=0; zIn[i]; i++){
-    char cSaved;
-    if( zIn[i]!=';' ) continue;
-    cSaved = zIn[i+1];
-    zIn[i+1] = 0;
-    if( sqlite3_complete(zIn) ){
-      char *zOut = sqlite3_normalize(zIn);
-      if( zOut ){
-        printf("%s\n", zOut);
-        sqlite3_free(zOut);
-      }else{
-        fprintf(stderr, "ERROR: %s\n", zIn);
-      }
-      zIn[i+1] = cSaved;
-      zIn += i+1;
-      i = -1;
-    }else{
-      zIn[i+1] = cSaved;
-    }
-  }
-}
+static void normalizeFile(char *zIn):
+    int i
+    if( zIn==0 ):
+        return
+    for(i=0; zIn[i]; i++):
+        char cSaved
+        if( zIn[i]!=';' ):
+            continue
+        cSaved = zIn[i+1]
+        zIn[i+1] = 0
+        if( sqlite3_complete(zIn) ):
+            char *zOut = sqlite3_normalize(zIn)
+            if( zOut ):
+                printf("%s\n", zOut)
+                sqlite3_free(zOut)
+            else:
+                fprintf(stderr, "ERROR: %s\n", zIn)
+            zIn[i+1] = cSaved
+            zIn += i+1
+            i = -1
+        else:
+            zIn[i+1] = cSaved
 
 /*
 ** The main routine for "sql_normalize".  Read files named on the
 ** command-line and run the text of each through sqlite3_normalize().
 */
-int main(int argc, char **argv){
-  int i;
-  FILE *in;
-  char *zBuf = 0;
-  sqlite3_int64 sz, got;
+int main(int argc, char **argv):
+    int i
+    FILE *in
+    char *zBuf = 0
+    sqlite3_int64 sz, got
 
-  for(i=1; i<argc; i++){
-    in = fopen(argv[i], "rb");
-    if( in==0 ){
-      fprintf(stderr, "cannot open \"%s\"\n", argv[i]);
-      continue;
-    }
-    fseek(in, 0, SEEK_END);
-    sz = ftell(in);
-    rewind(in);
-    zBuf = sqlite3_realloc64(zBuf, sz+1);
-    if( zBuf==0 ){
-      fprintf(stderr, "failed to malloc for %lld bytes\n", sz);
-      exit(1);
-    }
-    got = fread(zBuf, 1, sz, in);
-    fclose(in);
-    if( got!=sz ){
-      fprintf(stderr, "only able to read %lld of %lld bytes from \"%s\"\n",
-              got, sz, argv[i]);
-    }else{
-      zBuf[got] = 0;
-      normalizeFile(zBuf);
-    }
-  }
-  sqlite3_free(zBuf);
-}
+    for(i=1; i<argc; i++):
+        in = fopen(argv[i], "rb")
+        if( in==0 ):
+            fprintf(stderr, "cannot open \"%s\"\n", argv[i])
+            continue
+        fseek(in, 0, SEEK_END)
+        sz = ftell(in)
+        rewind(in)
+        zBuf = sqlite3_realloc64(zBuf, sz+1)
+        if( zBuf==0 ):
+            fprintf(stderr, "failed to malloc for %lld bytes\n", sz)
+            exit(1)
+        got = fread(zBuf, 1, sz, in)
+        fclose(in)
+        if( got!=sz ):
+            fprintf(stderr, "only able to read %lld of %lld bytes from \"%s\"\n",
+              got, sz, argv[i])
+        else:
+            zBuf[got] = 0
+            normalizeFile(zBuf)
+    sqlite3_free(zBuf)
 #endif /* SQLITE_NORMALIZE_CLI */

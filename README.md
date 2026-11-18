@@ -1,3 +1,7 @@
+> **Spaced-C fork.** Every `.c` and `.h` file in this tree is SQLite laid out
+> with [Offside](https://offside.grok.me/): a colon and an indent instead of
+> braces. See [SPACED.md](SPACED.md). It is not the upstream mirror.
+
 <h1 align="center">SQLite Source Repository</h1>
 
 This repository contains the complete source code for the

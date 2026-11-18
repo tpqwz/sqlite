@@ -113,95 +113,91 @@
 */
 #include "sqlite3ext.h"
 SQLITE_EXTENSION_INIT1
-#include <assert.h>
-#include <string.h>
-#include <limits.h>
-#include <math.h>
+    #include <assert.h>
+    #include <string.h>
+    #include <limits.h>
+    #include <math.h>
 
-#ifndef SQLITE_OMIT_VIRTUALTABLE
+    #ifndef SQLITE_OMIT_VIRTUALTABLE
 
-/* series_cursor is a subclass of sqlite3_vtab_cursor which will
-** serve as the underlying representation of a cursor that scans
-** over rows of the result.
-**
-** iOBase, iOTerm, and iOStep are the original values of the
-** start=, stop=, and step= constraints on the query.  These are
-** the values reported by the start, stop, and step columns of the
-** virtual table.
-**
-** iBase, iTerm, iStep, and bDescp are the actual values used to generate
-** the sequence.  These might be different from the iOxxxx values.
-** For example in
-**
-**   SELECT value FROM generate_series(1,11,2)
-**    WHERE value BETWEEN 4 AND 8;
-**
-** The iOBase is 1, but the iBase is 5.  iOTerm is 11 but iTerm is 7.
-** Another example:
-**
-**   SELECT value FROM generate_series(1,15,3) ORDER BY value DESC;
-**
-** The cursor initialization for the above query is:
-**
-**   iOBase = 1        iBase = 13
-**   iOTerm = 15       iTerm = 1
-**   iOStep = 3        iStep = 3      bDesc = 1
-**
-** The actual step size is unsigned so that can have a value of
-** +9223372036854775808 which is needed for querys like this:
-**
-**   SELECT value
-**     FROM generate_series(9223372036854775807,
-**                          -9223372036854775808,
-**                          -9223372036854775808)
-**    ORDER BY value ASC;
-**
-** The setup for the previous query will be:
-**
-**   iOBase = 9223372036854775807    iBase = -1
-**   iOTerm = -9223372036854775808   iTerm = 9223372036854775807
-**   iOStep = -9223372036854775808   iStep = 9223372036854775808  bDesc = 0
-*/
-typedef unsigned char u8;
-typedef struct series_cursor series_cursor;
-struct series_cursor {
-  sqlite3_vtab_cursor base;  /* Base class - must be first */
-  sqlite3_int64 iOBase;      /* Original starting value ("start") */
-  sqlite3_int64 iOTerm;      /* Original terminal value ("stop") */
-  sqlite3_int64 iOStep;      /* Original step value */
-  sqlite3_int64 iBase;       /* Starting value to actually use */
-  sqlite3_int64 iTerm;       /* Terminal value to actually use */
-  sqlite3_uint64 iStep;      /* The step size */
-  sqlite3_int64 iValue;      /* Current value */
-  u8 bDesc;                  /* iStep is really negative */
-  u8 bDone;                  /* True if stepped past last element */
-  u8 bLimit;                 /* There exists a limit clause */
-};
+    /* series_cursor is a subclass of sqlite3_vtab_cursor which will
+    ** serve as the underlying representation of a cursor that scans
+    ** over rows of the result.
+    **
+    ** iOBase, iOTerm, and iOStep are the original values of the
+    ** start=, stop=, and step= constraints on the query.  These are
+    ** the values reported by the start, stop, and step columns of the
+    ** virtual table.
+    **
+    ** iBase, iTerm, iStep, and bDescp are the actual values used to generate
+    ** the sequence.  These might be different from the iOxxxx values.
+    ** For example in
+    **
+    **   SELECT value FROM generate_series(1,11,2)
+    **    WHERE value BETWEEN 4 AND 8;
+    **
+    ** The iOBase is 1, but the iBase is 5.  iOTerm is 11 but iTerm is 7.
+    ** Another example:
+    **
+    **   SELECT value FROM generate_series(1,15,3) ORDER BY value DESC;
+    **
+    ** The cursor initialization for the above query is:
+    **
+    **   iOBase = 1        iBase = 13
+    **   iOTerm = 15       iTerm = 1
+    **   iOStep = 3        iStep = 3      bDesc = 1
+    **
+    ** The actual step size is unsigned so that can have a value of
+    ** +9223372036854775808 which is needed for querys like this:
+    **
+    **   SELECT value
+    **     FROM generate_series(9223372036854775807,
+    **                          -9223372036854775808,
+    **                          -9223372036854775808)
+    **    ORDER BY value ASC;
+    **
+    ** The setup for the previous query will be:
+    **
+    **   iOBase = 9223372036854775807    iBase = -1
+    **   iOTerm = -9223372036854775808   iTerm = 9223372036854775807
+    **   iOStep = -9223372036854775808   iStep = 9223372036854775808  bDesc = 0
+    */
+    typedef unsigned char u8
+typedef struct series_cursor series_cursor
+struct series_cursor:
+    sqlite3_vtab_cursor base /* Base class - must be first */
+    sqlite3_int64 iOBase /* Original starting value ("start") */
+    sqlite3_int64 iOTerm /* Original terminal value ("stop") */
+    sqlite3_int64 iOStep /* Original step value */
+    sqlite3_int64 iBase /* Starting value to actually use */
+    sqlite3_int64 iTerm /* Terminal value to actually use */
+    sqlite3_uint64 iStep /* The step size */
+    sqlite3_int64 iValue /* Current value */
+    u8 bDesc /* iStep is really negative */
+    u8 bDone /* True if stepped past last element */
+    u8 bLimit /* There exists a limit clause */
 
 /*
 ** Computed the difference between two 64-bit signed integers using a
 ** convoluted computation designed to work around the silly restriction
 ** against signed integer overflow in C.
 */
-static sqlite3_uint64 span64(sqlite3_int64 a, sqlite3_int64 b){
-  assert( a>=b );
-  return (*(sqlite3_uint64*)&a) - (*(sqlite3_uint64*)&b);
-}  
+static sqlite3_uint64 span64(sqlite3_int64 a, sqlite3_int64 b):
+    assert( a>=b )
+    return (*(sqlite3_uint64*)&a) - (*(sqlite3_uint64*)&b)
 
 /*
 ** Add or substract an unsigned 64-bit integer from a signed 64-bit integer
 ** and return the new signed 64-bit integer.
 */
-static sqlite3_int64 add64(sqlite3_int64 a, sqlite3_uint64 b){
-  sqlite3_uint64 x = *(sqlite3_uint64*)&a;
-  x += b;
-  return *(sqlite3_int64*)&x;
-}
-static sqlite3_int64 sub64(sqlite3_int64 a, sqlite3_uint64 b){
-  sqlite3_uint64 x = *(sqlite3_uint64*)&a;
-  x -= b;
-  return *(sqlite3_int64*)&x;
-}
+static sqlite3_int64 add64(sqlite3_int64 a, sqlite3_uint64 b):
+    sqlite3_uint64 x = *(sqlite3_uint64*)&a
+    x += b
+    return *(sqlite3_int64*)&x
+static sqlite3_int64 sub64(sqlite3_int64 a, sqlite3_uint64 b):
+    sqlite3_uint64 x = *(sqlite3_uint64*)&a
+    x -= b
+    return *(sqlite3_int64*)&x
 
 /*
 ** The seriesConnect() method is invoked to create a new
@@ -222,78 +218,72 @@ static int seriesConnect(
   int argcUnused, const char *const*argvUnused,
   sqlite3_vtab **ppVtab,
   char **pzErrUnused
-){
-  sqlite3_vtab *pNew;
-  int rc;
+):
+    sqlite3_vtab *pNew
+    int rc
 
-/* Column numbers */
-#define SERIES_COLUMN_ROWID (-1)
-#define SERIES_COLUMN_VALUE 0
-#define SERIES_COLUMN_START 1
-#define SERIES_COLUMN_STOP  2
-#define SERIES_COLUMN_STEP  3
+    /* Column numbers */
+    #define SERIES_COLUMN_ROWID (-1)
+    #define SERIES_COLUMN_VALUE 0
+    #define SERIES_COLUMN_START 1
+    #define SERIES_COLUMN_STOP  2
+    #define SERIES_COLUMN_STEP  3
 
-  (void)pUnused;
-  (void)argcUnused;
-  (void)argvUnused;
-  (void)pzErrUnused;
-  rc = sqlite3_declare_vtab(db,
-     "CREATE TABLE x(value,start hidden,stop hidden,step hidden)");
-  if( rc==SQLITE_OK ){
-    pNew = *ppVtab = sqlite3_malloc64( sizeof(*pNew) );
-    if( pNew==0 ) return SQLITE_NOMEM;
-    memset(pNew, 0, sizeof(*pNew));
-    sqlite3_vtab_config(db, SQLITE_VTAB_INNOCUOUS);
-  }
-  return rc;
-}
+    (void)pUnused
+    (void)argcUnused
+    (void)argvUnused
+    (void)pzErrUnused
+    rc = sqlite3_declare_vtab(db,
+     "CREATE TABLE x(value,start hidden,stop hidden,step hidden)")
+    if( rc==SQLITE_OK ):
+        pNew = *ppVtab = sqlite3_malloc64( sizeof(*pNew) )
+        if( pNew==0 ):
+            return SQLITE_NOMEM
+        memset(pNew, 0, sizeof(*pNew))
+        sqlite3_vtab_config(db, SQLITE_VTAB_INNOCUOUS)
+    return rc
 
 /*
 ** This method is the destructor for series_cursor objects.
 */
-static int seriesDisconnect(sqlite3_vtab *pVtab){
-  sqlite3_free(pVtab);
-  return SQLITE_OK;
-}
+static int seriesDisconnect(sqlite3_vtab *pVtab):
+    sqlite3_free(pVtab)
+    return SQLITE_OK
 
 /*
 ** Constructor for a new series_cursor object.
 */
-static int seriesOpen(sqlite3_vtab *pUnused, sqlite3_vtab_cursor **ppCursor){
-  series_cursor *pCur;
-  (void)pUnused;
-  pCur = sqlite3_malloc64( sizeof(*pCur) );
-  if( pCur==0 ) return SQLITE_NOMEM;
-  memset(pCur, 0, sizeof(*pCur));
-  *ppCursor = &pCur->base;
-  return SQLITE_OK;
-}
+static int seriesOpen(sqlite3_vtab *pUnused, sqlite3_vtab_cursor **ppCursor):
+    series_cursor *pCur
+    (void)pUnused
+    pCur = sqlite3_malloc64( sizeof(*pCur) )
+    if( pCur==0 ):
+        return SQLITE_NOMEM
+    memset(pCur, 0, sizeof(*pCur))
+    *ppCursor = &pCur->base
+    return SQLITE_OK
 
 /*
 ** Destructor for a series_cursor.
 */
-static int seriesClose(sqlite3_vtab_cursor *cur){
-  sqlite3_free(cur);
-  return SQLITE_OK;
-}
-
+static int seriesClose(sqlite3_vtab_cursor *cur):
+    sqlite3_free(cur)
+    return SQLITE_OK
 
 /*
 ** Advance a series_cursor to its next row of output.
 */
-static int seriesNext(sqlite3_vtab_cursor *cur){
-  series_cursor *pCur = (series_cursor*)cur;
-  if( pCur->iValue==pCur->iTerm ){
-    pCur->bDone = 1;
-  }else if( pCur->bDesc ){
-    pCur->iValue = sub64(pCur->iValue, pCur->iStep);
-    assert( pCur->iValue>=pCur->iTerm || pCur->bLimit );
-  }else{
-    pCur->iValue = add64(pCur->iValue, pCur->iStep);
-    assert( pCur->iValue<=pCur->iTerm || pCur->bLimit );
-  }
-  return SQLITE_OK;
-}
+static int seriesNext(sqlite3_vtab_cursor *cur):
+    series_cursor *pCur = (series_cursor*)cur
+    if( pCur->iValue==pCur->iTerm ):
+        pCur->bDone = 1
+    else if( pCur->bDesc ):
+        pCur->iValue = sub64(pCur->iValue, pCur->iStep)
+        assert( pCur->iValue>=pCur->iTerm || pCur->bLimit )
+    else:
+        pCur->iValue = add64(pCur->iValue, pCur->iStep)
+        assert( pCur->iValue<=pCur->iTerm || pCur->bLimit )
+    return SQLITE_OK
 
 /*
 ** Return values of columns for the row at which the series_cursor
@@ -303,18 +293,24 @@ static int seriesColumn(
   sqlite3_vtab_cursor *cur,   /* The cursor */
   sqlite3_context *ctx,       /* First argument to sqlite3_result_...() */
   int i                       /* Which column to return */
-){
-  series_cursor *pCur = (series_cursor*)cur;
-  sqlite3_int64 x = 0;
-  switch( i ){
-    case SERIES_COLUMN_START:  x = pCur->iOBase;     break;
-    case SERIES_COLUMN_STOP:   x = pCur->iOTerm;     break;
-    case SERIES_COLUMN_STEP:   x = pCur->iOStep;     break;
-    default:                   x = pCur->iValue;     break;
-  }
-  sqlite3_result_int64(ctx, x);
-  return SQLITE_OK;
-}
+):
+    series_cursor *pCur = (series_cursor*)cur
+    sqlite3_int64 x = 0
+    switch( i ):
+        case SERIES_COLUMN_START:
+            x = pCur->iOBase
+            break
+        case SERIES_COLUMN_STOP:
+            x = pCur->iOTerm
+            break
+        case SERIES_COLUMN_STEP:
+            x = pCur->iOStep
+            break
+        default:
+            x = pCur->iValue
+            break
+    sqlite3_result_int64(ctx, x)
+    return SQLITE_OK
 
 #ifndef LARGEST_UINT64
 #define LARGEST_INT64  ((sqlite3_int64)0x7fffffffffffffffLL)
@@ -325,20 +321,18 @@ static int seriesColumn(
 /*
 ** The rowid is the same as the value.
 */
-static int seriesRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
-  series_cursor *pCur = (series_cursor*)cur;
-  *pRowid = pCur->iValue;
-  return SQLITE_OK;
-}
+static int seriesRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid):
+    series_cursor *pCur = (series_cursor*)cur
+    *pRowid = pCur->iValue
+    return SQLITE_OK
 
 /*
 ** Return TRUE if the cursor has been moved off of the last
 ** row of output.
 */
-static int seriesEof(sqlite3_vtab_cursor *cur){
-  series_cursor *pCur = (series_cursor*)cur;
-  return pCur->bDone;
-}
+static int seriesEof(sqlite3_vtab_cursor *cur):
+    series_cursor *pCur = (series_cursor*)cur
+    return pCur->bDone
 
 /* True to cause run-time checking of the start=, stop=, and/or step=
 ** parameters.  The only reason to do this is for testing the
@@ -352,71 +346,81 @@ static int seriesEof(sqlite3_vtab_cursor *cur){
 ** Return the number of steps between pCur->iBase and pCur->iTerm if
 ** the step width is pCur->iStep.
 */
-static sqlite3_uint64 seriesSteps(series_cursor *pCur){
-  if( pCur->bDesc ){
-    assert( pCur->iBase >= pCur->iTerm );
-    return span64(pCur->iBase, pCur->iTerm)/pCur->iStep;
-  }else{
-    assert( pCur->iBase <= pCur->iTerm );
-    return span64(pCur->iTerm, pCur->iBase)/pCur->iStep;
-  }
-}
+static sqlite3_uint64 seriesSteps(series_cursor *pCur):
+    if( pCur->bDesc ):
+        assert( pCur->iBase >= pCur->iTerm )
+        return span64(pCur->iBase, pCur->iTerm)/pCur->iStep
+    else:
+        assert( pCur->iBase <= pCur->iTerm )
+        return span64(pCur->iTerm, pCur->iBase)/pCur->iStep
 
 #if defined(SQLITE_ENABLE_MATH_FUNCTIONS) || defined(_WIN32)
 /*
 ** Case 1 (the most common case):
 ** The standard math library is available so use ceil() and floor() from there.
 */
-static double seriesCeil(double r){ return ceil(r); }
-static double seriesFloor(double r){ return floor(r); }
+static double seriesCeil(double r):
+    return ceil(r)
+static double seriesFloor(double r):
+    return floor(r)
 #elif defined(__GNUC__) && !defined(SQLITE_DISABLE_INTRINSIC)
 /*
 ** Case 2 (2nd most common): Use GCC/Clang builtins
 */
-static double seriesCeil(double r){ return __builtin_ceil(r); }
-static double seriesFloor(double r){ return __builtin_floor(r); }
+static double seriesCeil(double r):
+    return __builtin_ceil(r)
+static double seriesFloor(double r):
+    return __builtin_floor(r)
 #else
 /*
 ** Case 3 (rarely happens): Use home-grown ceil() and floor() routines.
 */
-static double seriesCeil(double r){
-  sqlite3_int64 x;
-  if( r!=r ) return r;
-  if( r<=(-4503599627370496.0) ) return r;
-  if( r>=(+4503599627370496.0) ) return r;
-  x = (sqlite3_int64)r;
-  if( r==(double)x ) return r;
-  if( r>(double)x ) x++;
-  return (double)x;
-}
-static double seriesFloor(double r){
-  sqlite3_int64 x;
-  if( r!=r ) return r;
-  if( r<=(-4503599627370496.0) ) return r;
-  if( r>=(+4503599627370496.0) ) return r;
-  x = (sqlite3_int64)r;
-  if( r==(double)x ) return r;
-  if( r<(double)x ) x--;
-  return (double)x;
-}
+static double seriesCeil(double r):
+    sqlite3_int64 x
+    if( r!=r ):
+        return r
+    if( r<=(-4503599627370496.0) ):
+        return r
+    if( r>=(+4503599627370496.0) ):
+        return r
+    x = (sqlite3_int64)r
+    if( r==(double)x ):
+        return r
+    if( r>(double)x ):
+        x++
+    return (double)x
+static double seriesFloor(double r):
+    sqlite3_int64 x
+    if( r!=r ):
+        return r
+    if( r<=(-4503599627370496.0) ):
+        return r
+    if( r>=(+4503599627370496.0) ):
+        return r
+    x = (sqlite3_int64)r
+    if( r==(double)x ):
+        return r
+    if( r<(double)x ):
+        x--
+    return (double)x
 #endif
 
 /* Convert a floating point value to its closest integer.  Do so in
 ** a way that avoids 'outside the range of representable values' warnings
 ** from UBSAN.
 */
-static sqlite3_int64 seriesRealToI64(double r){
-  if( r<-9223372036854774784.0 ) return SMALLEST_INT64;
-  if( r>+9223372036854774784.0 ) return LARGEST_INT64;
-  return (sqlite3_int64)r;
-}
+static sqlite3_int64 seriesRealToI64(double r):
+    if( r<-9223372036854774784.0 ):
+        return SMALLEST_INT64
+    if( r>+9223372036854774784.0 ):
+        return LARGEST_INT64
+    return (sqlite3_int64)r
 
 /* Return true if the type of the value is TEXT or BLOB.
 */
-static int seriesIsTextOrBlob(sqlite3_value *pVal){
-  int eType = sqlite3_value_type(pVal);
-  return eType==SQLITE_TEXT || eType==SQLITE_BLOB;
-}
+static int seriesIsTextOrBlob(sqlite3_value *pVal):
+    int eType = sqlite3_value_type(pVal)
+    return eType==SQLITE_TEXT || eType==SQLITE_BLOB
 
 /*
 ** This method is called to "rewind" the series_cursor object back
@@ -449,264 +453,224 @@ static int seriesFilter(
   sqlite3_vtab_cursor *pVtabCursor,
   int idxNum, const char *idxStrUnused,
   int argc, sqlite3_value **argv
-){
-  series_cursor *pCur = (series_cursor *)pVtabCursor;
-  int iArg = 0;                         /* Arguments used so far */
-  int i;                                /* Loop counter */
-  sqlite3_int64 iMin = SMALLEST_INT64;  /* Smallest allowed output value */
-  sqlite3_int64 iMax = LARGEST_INT64;   /* Largest allowed output value */
-  sqlite3_int64 iLimit = 0;             /* if >0, the value of the LIMIT */
-  sqlite3_int64 iOffset = 0;            /* if >0, the value of the OFFSET */
+):
+    series_cursor *pCur = (series_cursor *)pVtabCursor
+    int iArg = 0 /* Arguments used so far */
+    int i /* Loop counter */
+    sqlite3_int64 iMin = SMALLEST_INT64 /* Smallest allowed output value */
+    sqlite3_int64 iMax = LARGEST_INT64 /* Largest allowed output value */
+    sqlite3_int64 iLimit = 0 /* if >0, the value of the LIMIT */
+    sqlite3_int64 iOffset = 0 /* if >0, the value of the OFFSET */
 
-  (void)idxStrUnused;
+    (void)idxStrUnused
 
-  /* If any constraints have a NULL value, then return no rows.
-  ** See ticket https://sqlite.org/src/info/fac496b61722daf2
-  */
-  for(i=0; i<argc; i++){
-    if( sqlite3_value_type(argv[i])==SQLITE_NULL ){
-      goto series_no_rows;
-    }
-  }
+    /* If any constraints have a NULL value, then return no rows.
+      ** See ticket https://sqlite.org/src/info/fac496b61722daf2
+      */
+    for(i=0; i<argc; i++):
+        if( sqlite3_value_type(argv[i])==SQLITE_NULL ):
+            goto series_no_rows
 
-  /* Capture the three HIDDEN parameters to the virtual table and insert
-  ** default values for any parameters that are omitted.
-  */
-  if( idxNum & 0x01 ){
-    pCur->iOBase = sqlite3_value_int64(argv[iArg++]);
-  }else{
-    pCur->iOBase = 0;
-  }
-  if( idxNum & 0x02 ){
-    pCur->iOTerm = sqlite3_value_int64(argv[iArg++]);
-  }else{
-    pCur->iOTerm = 0xffffffff;
-  }
-  if( idxNum & 0x04 ){
-    pCur->iOStep = sqlite3_value_int64(argv[iArg++]);
-    if( pCur->iOStep==0 ) pCur->iOStep = 1;
-  }else{
-    pCur->iOStep = 1;
-  }
+    /* Capture the three HIDDEN parameters to the virtual table and insert
+      ** default values for any parameters that are omitted.
+      */
+    if( idxNum & 0x01 ):
+        pCur->iOBase = sqlite3_value_int64(argv[iArg++])
+    else:
+        pCur->iOBase = 0
+    if( idxNum & 0x02 ):
+        pCur->iOTerm = sqlite3_value_int64(argv[iArg++])
+    else:
+        pCur->iOTerm = 0xffffffff
+    if( idxNum & 0x04 ):
+        pCur->iOStep = sqlite3_value_int64(argv[iArg++])
+        if( pCur->iOStep==0 ):
+            pCur->iOStep = 1
+    else:
+        pCur->iOStep = 1
 
-  /* If there are constraints on the value column but there are
-  ** no constraints on  the start, stop, and step columns, then
-  ** initialize the default range to be the entire range of 64-bit signed
-  ** integers.  This range will contracted by the value column constraints
-  ** further below.
-  */
-  if( (idxNum & 0x05)==0 && (idxNum & 0x0380)!=0 ){
-    pCur->iOBase = SMALLEST_INT64;
-  }
-  if( (idxNum & 0x06)==0 && (idxNum & 0x3080)!=0 ){
-    pCur->iOTerm = LARGEST_INT64;
-  }
-  pCur->iBase = pCur->iOBase;
-  pCur->iTerm = pCur->iOTerm;
-  if( pCur->iOStep>0 ){  
-    pCur->iStep = pCur->iOStep;
-  }else if( pCur->iOStep>SMALLEST_INT64 ){
-    pCur->iStep = -pCur->iOStep;
-  }else{
-    pCur->iStep = LARGEST_INT64;
-    pCur->iStep++;
-  }
-  pCur->bDesc = pCur->iOStep<0;
-  if( pCur->bDesc==0 && pCur->iBase>pCur->iTerm ){
-    goto series_no_rows;
-  }
-  if( pCur->bDesc!=0 && pCur->iBase<pCur->iTerm ){
-    goto series_no_rows;
-  }
+    /* If there are constraints on the value column but there are
+      ** no constraints on  the start, stop, and step columns, then
+      ** initialize the default range to be the entire range of 64-bit signed
+      ** integers.  This range will contracted by the value column constraints
+      ** further below.
+      */
+    if( (idxNum & 0x05)==0 && (idxNum & 0x0380)!=0 ):
+        pCur->iOBase = SMALLEST_INT64
+    if( (idxNum & 0x06)==0 && (idxNum & 0x3080)!=0 ):
+        pCur->iOTerm = LARGEST_INT64
+    pCur->iBase = pCur->iOBase
+    pCur->iTerm = pCur->iOTerm
+    if( pCur->iOStep>0 ):
+        pCur->iStep = pCur->iOStep
+    else if( pCur->iOStep>SMALLEST_INT64 ):
+        pCur->iStep = -pCur->iOStep
+    else:
+        pCur->iStep = LARGEST_INT64
+        pCur->iStep++
+    pCur->bDesc = pCur->iOStep<0
+    if( pCur->bDesc==0 && pCur->iBase>pCur->iTerm ):
+        goto series_no_rows
+    if( pCur->bDesc!=0 && pCur->iBase<pCur->iTerm ):
+        goto series_no_rows
 
-  /* Extract the LIMIT and OFFSET values, but do not apply them yet.
-  ** The range must first be constrained by the limits on value.
-  */
-  if( idxNum & 0x20 ){
-    iLimit = sqlite3_value_int64(argv[iArg++]);
-    if( idxNum & 0x40 ){
-      iOffset = sqlite3_value_int64(argv[iArg++]);
-    }
-    if( iLimit>0 ) pCur->bLimit = 1;
-  }
+    /* Extract the LIMIT and OFFSET values, but do not apply them yet.
+      ** The range must first be constrained by the limits on value.
+      */
+    if( idxNum & 0x20 ):
+        iLimit = sqlite3_value_int64(argv[iArg++])
+        if( idxNum & 0x40 ):
+            iOffset = sqlite3_value_int64(argv[iArg++])
+        if( iLimit>0 ):
+            pCur->bLimit = 1
 
-  /* Narrow the range of iMin and iMax (the minimum and maximum outputs)
-  ** based on equality and inequality constraints on the "value" column.
-  **
-  ** The "value" column has no affinity, so a TEXT or BLOB operand X is
-  ** not converted into a number.  Every INTEGER is less than any TEXT
-  ** or BLOB, so "value=X", "value>X" and "value>=X" are never true and
-  ** "value<X" and "value<=X" are always true.  The type must be checked
-  ** before sqlite3_value_numeric_type(), which would convert a TEXT
-  ** value such as '3' into a number.
-  */
-  if( idxNum & 0x3380 ){
-    if( idxNum & 0x0080 ){    /* value=X */
-      if( seriesIsTextOrBlob(argv[iArg]) ){
-        goto series_no_rows;
-      }else if( sqlite3_value_numeric_type(argv[iArg])==SQLITE_FLOAT ){
-        double r = sqlite3_value_double(argv[iArg++]);
-        if( r==seriesCeil(r)
-         && r>=(double)SMALLEST_INT64
-         && r<=(double)LARGEST_INT64
-        ){
-          iMin = iMax = seriesRealToI64(r);
-        }else{
-          goto series_no_rows;
-        }
-      }else{
-        iMin = iMax = sqlite3_value_int64(argv[iArg++]);
-      }
-    }else{
-      if( idxNum & 0x0300 ){  /* value>X (0x200) or value>=X (0x100) */
-        if( seriesIsTextOrBlob(argv[iArg]) ){
-          goto series_no_rows;
-        }else if( sqlite3_value_numeric_type(argv[iArg])==SQLITE_FLOAT ){
-          double r = sqlite3_value_double(argv[iArg++]);
-          if( r<=(double)SMALLEST_INT64 ){
-            iMin = SMALLEST_INT64;
-          }else if( r>(double)LARGEST_INT64 ){
-            goto series_no_rows;
-          }else{
-            iMin = seriesRealToI64(seriesCeil(r));
-            if( (idxNum & 0x0200)!=0 && r==seriesCeil(r) ){
-              if( iMin==LARGEST_INT64 ) goto series_no_rows;
-              iMin++;
-            }
-          }
-        }else{
-          iMin = sqlite3_value_int64(argv[iArg++]);
-          if( (idxNum & 0x0200)!=0 ){
-            if( iMin==LARGEST_INT64 ){
-              goto series_no_rows;
-            }else{
-              iMin++;
-            }
-          }
-        }
-      }
-      if( idxNum & 0x3000 ){   /* value<X (0x2000) or value<=X (0x1000) */
-        if( seriesIsTextOrBlob(argv[iArg]) ){
-          iArg++;   /* No upper bound */
-        }else if( sqlite3_value_numeric_type(argv[iArg])==SQLITE_FLOAT ){
-          double r = sqlite3_value_double(argv[iArg++]);
-          if( r>=(double)LARGEST_INT64 ){
-            iMax = LARGEST_INT64;
-          }else if( r<=(double)SMALLEST_INT64 ){
-            goto series_no_rows;
-          }else{
-            iMax = seriesRealToI64(seriesFloor(r));
-            if( (idxNum & 0x2000)!=0 && r==seriesFloor(r) ){
-              if( iMax==SMALLEST_INT64 ) goto series_no_rows;
-              iMax--;
-            }
-          }
-        }else{
-          iMax = sqlite3_value_int64(argv[iArg++]);
-          if( idxNum & 0x2000 ){
-            if( iMax==SMALLEST_INT64 ){
-              goto series_no_rows;
-            }else{
-              iMax--;
-            }
-          }
-        }
-      }
-      if( iMin>iMax ){
-        goto series_no_rows;
-      }
-    }
+    /* Narrow the range of iMin and iMax (the minimum and maximum outputs)
+      ** based on equality and inequality constraints on the "value" column.
+      **
+      ** The "value" column has no affinity, so a TEXT or BLOB operand X is
+      ** not converted into a number.  Every INTEGER is less than any TEXT
+      ** or BLOB, so "value=X", "value>X" and "value>=X" are never true and
+      ** "value<X" and "value<=X" are always true.  The type must be checked
+      ** before sqlite3_value_numeric_type(), which would convert a TEXT
+      ** value such as '3' into a number.
+      */
+    if( idxNum & 0x3380 ):
+        if( idxNum & 0x0080 ):
+            /* value=X */
+            if( seriesIsTextOrBlob(argv[iArg]) ):
+                goto series_no_rows
+            else if( sqlite3_value_numeric_type(argv[iArg])==SQLITE_FLOAT ):
+                double r = sqlite3_value_double(argv[iArg++])
+                if( r==seriesCeil(r)
+                         && r>=(double)SMALLEST_INT64
+                         && r<=(double)LARGEST_INT64
+                        ):
+                            iMin = iMax = seriesRealToI64(r)
+                else:
+                    goto series_no_rows
+            else:
+                iMin = iMax = sqlite3_value_int64(argv[iArg++])
+        else:
+            if( idxNum & 0x0300 ):
+                /* value>X (0x200) or value>=X (0x100) */
+                if( seriesIsTextOrBlob(argv[iArg]) ):
+                    goto series_no_rows
+                else if( sqlite3_value_numeric_type(argv[iArg])==SQLITE_FLOAT ):
+                    double r = sqlite3_value_double(argv[iArg++])
+                    if( r<=(double)SMALLEST_INT64 ):
+                        iMin = SMALLEST_INT64
+                    else if( r>(double)LARGEST_INT64 ):
+                        goto series_no_rows
+                    else:
+                        iMin = seriesRealToI64(seriesCeil(r))
+                        if( (idxNum & 0x0200)!=0 && r==seriesCeil(r) ):
+                            if( iMin==LARGEST_INT64 ):
+                                goto series_no_rows
+                            iMin++
+                else:
+                    iMin = sqlite3_value_int64(argv[iArg++])
+                    if( (idxNum & 0x0200)!=0 ):
+                        if( iMin==LARGEST_INT64 ):
+                            goto series_no_rows
+                        else:
+                            iMin++
+            if( idxNum & 0x3000 ):
+                /* value<X (0x2000) or value<=X (0x1000) */
+                if( seriesIsTextOrBlob(argv[iArg]) ):
+                    iArg++ /* No upper bound */
+                else if( sqlite3_value_numeric_type(argv[iArg])==SQLITE_FLOAT ):
+                    double r = sqlite3_value_double(argv[iArg++])
+                    if( r>=(double)LARGEST_INT64 ):
+                        iMax = LARGEST_INT64
+                    else if( r<=(double)SMALLEST_INT64 ):
+                        goto series_no_rows
+                    else:
+                        iMax = seriesRealToI64(seriesFloor(r))
+                        if( (idxNum & 0x2000)!=0 && r==seriesFloor(r) ):
+                            if( iMax==SMALLEST_INT64 ):
+                                goto series_no_rows
+                            iMax--
+                else:
+                    iMax = sqlite3_value_int64(argv[iArg++])
+                    if( idxNum & 0x2000 ):
+                        if( iMax==SMALLEST_INT64 ):
+                            goto series_no_rows
+                        else:
+                            iMax--
+            if( iMin>iMax ):
+                goto series_no_rows
 
-    /* Try to reduce the range of values to be generated based on
-    ** constraints on the "value" column.
-    */
-    if( pCur->bDesc==0 ){
-      if( pCur->iBase<iMin ){
-        sqlite3_uint64 span = span64(iMin,pCur->iBase);
-        pCur->iBase = add64(pCur->iBase, (span/pCur->iStep)*pCur->iStep);
-        if( pCur->iBase<iMin ){
-          if( pCur->iBase > sub64(LARGEST_INT64, pCur->iStep) ){
-            goto series_no_rows;
-          }
-          pCur->iBase = add64(pCur->iBase, pCur->iStep);
-        }
-      }
-      if( pCur->iTerm>iMax ){
-        pCur->iTerm = iMax;
-      }
-    }else{
-      if( pCur->iBase>iMax ){
-        sqlite3_uint64 span = span64(pCur->iBase,iMax);
-        pCur->iBase = sub64(pCur->iBase, (span/pCur->iStep)*pCur->iStep);
-        if( pCur->iBase>iMax ){
-          if( pCur->iBase < add64(SMALLEST_INT64, pCur->iStep) ){
-            goto series_no_rows;
-          }
-          pCur->iBase = sub64(pCur->iBase, pCur->iStep);
-        }
-      }
-      if( pCur->iTerm<iMin ){
-        pCur->iTerm = iMin;
-      }
-    }
-  }
+        /* Try to reduce the range of values to be generated based on
+            ** constraints on the "value" column.
+            */
+        if( pCur->bDesc==0 ):
+            if( pCur->iBase<iMin ):
+                sqlite3_uint64 span = span64(iMin,pCur->iBase)
+                pCur->iBase = add64(pCur->iBase, (span/pCur->iStep)*pCur->iStep)
+                if( pCur->iBase<iMin ):
+                    if( pCur->iBase > sub64(LARGEST_INT64, pCur->iStep) ):
+                        goto series_no_rows
+                    pCur->iBase = add64(pCur->iBase, pCur->iStep)
+            if( pCur->iTerm>iMax ):
+                pCur->iTerm = iMax
+        else:
+            if( pCur->iBase>iMax ):
+                sqlite3_uint64 span = span64(pCur->iBase,iMax)
+                pCur->iBase = sub64(pCur->iBase, (span/pCur->iStep)*pCur->iStep)
+                if( pCur->iBase>iMax ):
+                    if( pCur->iBase < add64(SMALLEST_INT64, pCur->iStep) ):
+                        goto series_no_rows
+                    pCur->iBase = sub64(pCur->iBase, pCur->iStep)
+            if( pCur->iTerm<iMin ):
+                pCur->iTerm = iMin
 
-  /* Adjust iTerm so that it is exactly the last value of the series.
-  */
-  if( pCur->bDesc==0 ){
-    if( pCur->iBase>pCur->iTerm ){
-      goto series_no_rows;
-    }
-    pCur->iTerm = sub64(pCur->iTerm,
-                        span64(pCur->iTerm,pCur->iBase) % pCur->iStep);
-  }else{
-    if( pCur->iBase<pCur->iTerm ){
-      goto series_no_rows;
-    }
-    pCur->iTerm = add64(pCur->iTerm,
-                        span64(pCur->iBase,pCur->iTerm) % pCur->iStep);
-  }
+    /* Adjust iTerm so that it is exactly the last value of the series.
+      */
+    if( pCur->bDesc==0 ):
+        if( pCur->iBase>pCur->iTerm ):
+            goto series_no_rows
+        pCur->iTerm = sub64(pCur->iTerm,
+                        span64(pCur->iTerm,pCur->iBase) % pCur->iStep)
+    else:
+        if( pCur->iBase<pCur->iTerm ):
+            goto series_no_rows
+        pCur->iTerm = add64(pCur->iTerm,
+                        span64(pCur->iBase,pCur->iTerm) % pCur->iStep)
 
-  /* Transform the series generator to output values in the requested
-  ** order.
-  */
-  if( ((idxNum & 0x0008)!=0 && pCur->bDesc==0)
-   || ((idxNum & 0x0010)!=0 && pCur->bDesc!=0)
-  ){
-    sqlite3_int64 tmp = pCur->iBase;
-    pCur->iBase = pCur->iTerm;
-    pCur->iTerm = tmp;
-    pCur->bDesc = !pCur->bDesc;
-  }
+    /* Transform the series generator to output values in the requested
+      ** order.
+      */
+    if( ((idxNum & 0x0008)!=0 && pCur->bDesc==0)
+       || ((idxNum & 0x0010)!=0 && pCur->bDesc!=0)
+      ):
+        sqlite3_int64 tmp = pCur->iBase
+        pCur->iBase = pCur->iTerm
+        pCur->iTerm = tmp
+        pCur->bDesc = !pCur->bDesc
 
-  /* Apply LIMIT and OFFSET constraints, if any */
-  assert( pCur->iStep!=0 );
-  if( idxNum & 0x20 ){
-    if( iOffset>0 ){
-      if( seriesSteps(pCur) < (sqlite3_uint64)iOffset ){
-        goto series_no_rows;
-      }else if( pCur->bDesc ){
-        pCur->iBase = sub64(pCur->iBase, pCur->iStep*iOffset);
-      }else{
-        pCur->iBase = add64(pCur->iBase, pCur->iStep*iOffset);
-      }
-    }
-    if( iLimit>=0 && seriesSteps(pCur) > (sqlite3_uint64)iLimit ){
-      pCur->iTerm = add64(pCur->iBase, (iLimit - 1)*pCur->iStep);
-    }
-  }
-  pCur->iValue = pCur->iBase;
-  pCur->bDone = 0;
-  return SQLITE_OK;
+    /* Apply LIMIT and OFFSET constraints, if any */
+    assert( pCur->iStep!=0 )
+    if( idxNum & 0x20 ):
+        if( iOffset>0 ):
+            if( seriesSteps(pCur) < (sqlite3_uint64)iOffset ):
+                goto series_no_rows
+            else if( pCur->bDesc ):
+                pCur->iBase = sub64(pCur->iBase, pCur->iStep*iOffset)
+            else:
+                pCur->iBase = add64(pCur->iBase, pCur->iStep*iOffset)
+        if( iLimit>=0 && seriesSteps(pCur) > (sqlite3_uint64)iLimit ):
+            pCur->iTerm = add64(pCur->iBase, (iLimit - 1)*pCur->iStep)
+    pCur->iValue = pCur->iBase
+    pCur->bDone = 0
+    return SQLITE_OK
 
-series_no_rows:
-  pCur->iBase = 0;
-  pCur->iTerm = 0;
-  pCur->iStep = 1;
-  pCur->bDesc = 0;
-  pCur->bDone = 1;
-  return SQLITE_OK;  
-}
+    series_no_rows:
+    pCur->iBase = 0
+    pCur->iTerm = 0
+    pCur->iStep = 1
+    pCur->bDesc = 0
+    pCur->bDone = 1
+    return SQLITE_OK
 
 /*
 ** SQLite will invoke this method one or more times while planning a query
@@ -752,188 +716,179 @@ series_no_rows:
 static int seriesBestIndex(
   sqlite3_vtab *pVTab,
   sqlite3_index_info *pIdxInfo
-){
-  int i, j;              /* Loop over constraints */
-  int idxNum = 0;        /* The query plan bitmask */
-#ifndef ZERO_ARGUMENT_GENERATE_SERIES
-  int bStartSeen = 0;    /* EQ constraint seen on the START column */
-#endif
-  int unusableMask = 0;  /* Mask of unusable constraints */
-  int nArg = 0;          /* Number of arguments that seriesFilter() expects */
-  int aIdx[7];           /* Constraints on start, stop, step, LIMIT, OFFSET,
+):
+    int i, j /* Loop over constraints */
+    int idxNum = 0 /* The query plan bitmask */
+    #ifndef ZERO_ARGUMENT_GENERATE_SERIES
+    int bStartSeen = 0 /* EQ constraint seen on the START column */
+    #endif
+    int unusableMask = 0 /* Mask of unusable constraints */
+    int nArg = 0 /* Number of arguments that seriesFilter() expects */
+    int aIdx[7] /* Constraints on start, stop, step, LIMIT, OFFSET,
                          ** and value.  aIdx[5] covers value=, value>=, and
                          ** value>,  aIdx[6] covers value<= and value< */
-  const struct sqlite3_index_constraint *pConstraint;
+    const struct sqlite3_index_constraint *pConstraint
 
-  /* This implementation assumes that the start, stop, and step columns
-  ** are the last three columns in the virtual table. */
-  assert( SERIES_COLUMN_STOP == SERIES_COLUMN_START+1 );
-  assert( SERIES_COLUMN_STEP == SERIES_COLUMN_START+2 );
+    /* This implementation assumes that the start, stop, and step columns
+      ** are the last three columns in the virtual table. */
+    assert( SERIES_COLUMN_STOP == SERIES_COLUMN_START+1 )
+    assert( SERIES_COLUMN_STEP == SERIES_COLUMN_START+2 )
 
-  aIdx[0] = aIdx[1] = aIdx[2] = aIdx[3] = aIdx[4] = aIdx[5] = aIdx[6] = -1;
-  pConstraint = pIdxInfo->aConstraint;
-  for(i=0; i<pIdxInfo->nConstraint; i++, pConstraint++){
-    int iCol;    /* 0 for start, 1 for stop, 2 for step */
-    int iMask;   /* bitmask for those column */
-    int op = pConstraint->op;
-    if( op>=SQLITE_INDEX_CONSTRAINT_LIMIT
-     && op<=SQLITE_INDEX_CONSTRAINT_OFFSET
-    ){
-      if( pConstraint->usable==0 ){
-        /* do nothing */
-      }else if( op==SQLITE_INDEX_CONSTRAINT_LIMIT ){
-        aIdx[3] = i;
-        idxNum |= 0x20;
-      }else{
-        assert( op==SQLITE_INDEX_CONSTRAINT_OFFSET );
-        aIdx[4] = i;
-        idxNum |= 0x40;
-      }
-      continue;
-    }
-    if( pConstraint->iColumn<SERIES_COLUMN_START ){
-      if( (pConstraint->iColumn==SERIES_COLUMN_VALUE ||
-           pConstraint->iColumn==SERIES_COLUMN_ROWID)
-       && pConstraint->usable
-      ){
-        switch( op ){
-          case SQLITE_INDEX_CONSTRAINT_EQ:
-          case SQLITE_INDEX_CONSTRAINT_IS: {
-            idxNum |=  0x0080;
-            idxNum &= ~0x3300;
-            aIdx[5] = i;
-            aIdx[6] = -1;
-#ifndef ZERO_ARGUMENT_GENERATE_SERIES
-            bStartSeen = 1;
-#endif
-            break;
-          }
-          case SQLITE_INDEX_CONSTRAINT_GE: {
-            if( idxNum & 0x0080 ) break;
-            idxNum |=  0x0100;
-            idxNum &= ~0x0200;
-            aIdx[5] = i;
-#ifndef ZERO_ARGUMENT_GENERATE_SERIES
-            bStartSeen = 1;
-#endif
-            break;
-          }
-          case SQLITE_INDEX_CONSTRAINT_GT: {
-            if( idxNum & 0x0080 ) break;
-            idxNum |=  0x0200;
-            idxNum &= ~0x0100;
-            aIdx[5] = i;
-#ifndef ZERO_ARGUMENT_GENERATE_SERIES
-            bStartSeen = 1;
-#endif
-            break;
-          }
-          case SQLITE_INDEX_CONSTRAINT_LE: {
-            if( idxNum & 0x0080 ) break;
-            idxNum |=  0x1000;
-            idxNum &= ~0x2000;
-            aIdx[6] = i;
-            break;
-          }
-          case SQLITE_INDEX_CONSTRAINT_LT: {
-            if( idxNum & 0x0080 ) break;
-            idxNum |=  0x2000;
-            idxNum &= ~0x1000;
-            aIdx[6] = i;
-            break;
-          }
-        }
-      }
-      continue;
-    }
-    iCol = pConstraint->iColumn - SERIES_COLUMN_START;
-    assert( iCol>=0 && iCol<=2 );
-    iMask = 1 << iCol;
-#ifndef ZERO_ARGUMENT_GENERATE_SERIES
-    if( iCol==0 && op==SQLITE_INDEX_CONSTRAINT_EQ ){
-      bStartSeen = 1;
-    }
-#endif
-    if( pConstraint->usable==0 ){
-      unusableMask |=  iMask;
-      continue;
-    }else if( op==SQLITE_INDEX_CONSTRAINT_EQ ){
-      idxNum |= iMask;
-      aIdx[iCol] = i;
-    }
-  }
-  if( pIdxInfo->nOrderBy>=1 ){
-    int iOB = pIdxInfo->aOrderBy[0].iColumn;
-    if( iOB==SERIES_COLUMN_VALUE || iOB==SERIES_COLUMN_ROWID ){
-      /* The rowid is an alias for value, and both are unique, so the
-      ** series can be generated in the requested order regardless of any
-      ** subsequent ORDER BY terms. */
-      if( pIdxInfo->aOrderBy[0].desc ){
-        idxNum |= 0x08;
-      }else{
-        idxNum |= 0x10;
-      }
-      pIdxInfo->orderByConsumed = 1;
-    }else{
-      /* The core will sort the output, so it needs to see every row.
-      ** A LIMIT or OFFSET applied here would discard rows before the sort */
-      idxNum &= ~0x60;
-      aIdx[3] = aIdx[4] = -1;
-    }
-  }
-  if( aIdx[3]==0 ){
-    /* Ignore OFFSET if LIMIT is omitted */
-    idxNum &= ~0x60;
-    aIdx[4] = 0;
-  }
-  for(i=0; i<7; i++){
-    if( (j = aIdx[i])>=0 ){
-      pIdxInfo->aConstraintUsage[j].argvIndex = ++nArg;
-      pIdxInfo->aConstraintUsage[j].omit =
-         !SQLITE_SERIES_CONSTRAINT_VERIFY || i>=3;
-    }
-  }
-  /* The current generate_column() implementation requires at least one
-  ** argument (the START value).  Legacy versions assumed START=0 if the
-  ** first argument was omitted.  Compile with -DZERO_ARGUMENT_GENERATE_SERIES
-  ** to obtain the legacy behavior */
-#ifndef ZERO_ARGUMENT_GENERATE_SERIES
-  if( !bStartSeen ){
-    sqlite3_free(pVTab->zErrMsg);
-    pVTab->zErrMsg = sqlite3_mprintf(
-        "first argument to \"generate_series()\" missing or unusable");
-    return SQLITE_ERROR;
-  }
-#endif
-  if( (unusableMask & ~idxNum)!=0 ){
-    /* The start, stop, and step columns are inputs.  Therefore if there
-    ** are unusable constraints on any of start, stop, or step then
-    ** this plan is unusable */
-    return SQLITE_CONSTRAINT;
-  }
-  if( (idxNum & 0x03)==0x03 ){
-    /* Both start= and stop= boundaries are available.  This is the 
-    ** the preferred case */
-    pIdxInfo->estimatedCost = (double)(2 - ((idxNum&4)!=0));
-    pIdxInfo->estimatedRows = 1000;
-  }else if( (idxNum & 0x21)==0x21 ){
-    /* We have start= and LIMIT */
-    pIdxInfo->estimatedRows = 2500;
-  }else{
-    /* If either boundary is missing, we have to generate a huge span
-    ** of numbers.  Make this case very expensive so that the query
-    ** planner will work hard to avoid it. */
-    pIdxInfo->estimatedRows = 2147483647;
-  }
-  pIdxInfo->idxNum = idxNum;
-#ifdef SQLITE_INDEX_SCAN_HEX
-  pIdxInfo->idxFlags = SQLITE_INDEX_SCAN_HEX;
-#endif
-  return SQLITE_OK;
-}
+    aIdx[0] = aIdx[1] = aIdx[2] = aIdx[3] = aIdx[4] = aIdx[5] = aIdx[6] = -1
+    pConstraint = pIdxInfo->aConstraint
+    for(i=0; i<pIdxInfo->nConstraint; i++, pConstraint++):
+        int iCol /* 0 for start, 1 for stop, 2 for step */
+        int iMask /* bitmask for those column */
+        int op = pConstraint->op
+        if( op>=SQLITE_INDEX_CONSTRAINT_LIMIT
+             && op<=SQLITE_INDEX_CONSTRAINT_OFFSET
+            ):
+                if( pConstraint->usable==0 ):
+                    /* do nothing */
+                else if( op==SQLITE_INDEX_CONSTRAINT_LIMIT ):
+                    aIdx[3] = i
+                    idxNum |= 0x20
+                else:
+                    assert( op==SQLITE_INDEX_CONSTRAINT_OFFSET )
+                    aIdx[4] = i
+                    idxNum |= 0x40
+                continue
+        if( pConstraint->iColumn<SERIES_COLUMN_START ):
+            if( (pConstraint->iColumn==SERIES_COLUMN_VALUE ||
+                       pConstraint->iColumn==SERIES_COLUMN_ROWID)
+                   && pConstraint->usable
+                  ):
+                      switch( op ):
+                          case SQLITE_INDEX_CONSTRAINT_EQ:
+                          case SQLITE_INDEX_CONSTRAINT_IS:
+                              {
+                                  idxNum |=  0x0080
+                                  idxNum &= ~0x3300
+                                  aIdx[5] = i
+                                  aIdx[6] = -1
+                                  #ifndef ZERO_ARGUMENT_GENERATE_SERIES
+                                  bStartSeen = 1
+                                  #endif
+                                  break
+                              }
+                          case SQLITE_INDEX_CONSTRAINT_GE:
+                              {
+                                  if( idxNum & 0x0080 ):
+                                      break
+                                  idxNum |=  0x0100
+                                  idxNum &= ~0x0200
+                                  aIdx[5] = i
+                                  #ifndef ZERO_ARGUMENT_GENERATE_SERIES
+                                  bStartSeen = 1
+                                  #endif
+                                  break
+                              }
+                          case SQLITE_INDEX_CONSTRAINT_GT:
+                              {
+                                  if( idxNum & 0x0080 ):
+                                      break
+                                  idxNum |=  0x0200
+                                  idxNum &= ~0x0100
+                                  aIdx[5] = i
+                                  #ifndef ZERO_ARGUMENT_GENERATE_SERIES
+                                  bStartSeen = 1
+                                  #endif
+                                  break
+                              }
+                          case SQLITE_INDEX_CONSTRAINT_LE:
+                              {
+                                  if( idxNum & 0x0080 ):
+                                      break
+                                  idxNum |=  0x1000
+                                  idxNum &= ~0x2000
+                                  aIdx[6] = i
+                                  break
+                              }
+                          case SQLITE_INDEX_CONSTRAINT_LT:
+                              {
+                                  if( idxNum & 0x0080 ):
+                                      break
+                                  idxNum |=  0x2000
+                                  idxNum &= ~0x1000
+                                  aIdx[6] = i
+                                  break
+                              }
+            continue
+        iCol = pConstraint->iColumn - SERIES_COLUMN_START
+        assert( iCol>=0 && iCol<=2 )
+        iMask = 1 << iCol
+        #ifndef ZERO_ARGUMENT_GENERATE_SERIES
+        if( iCol==0 && op==SQLITE_INDEX_CONSTRAINT_EQ ):
+            bStartSeen = 1
+        #endif
+        if( pConstraint->usable==0 ):
+            unusableMask |=  iMask
+            continue
+        else if( op==SQLITE_INDEX_CONSTRAINT_EQ ):
+            idxNum |= iMask
+            aIdx[iCol] = i
+    if( pIdxInfo->nOrderBy>=1 ):
+        int iOB = pIdxInfo->aOrderBy[0].iColumn
+        if( iOB==SERIES_COLUMN_VALUE || iOB==SERIES_COLUMN_ROWID ):
+            /* The rowid is an alias for value, and both are unique, so the
+                  ** series can be generated in the requested order regardless of any
+                  ** subsequent ORDER BY terms. */
+            if( pIdxInfo->aOrderBy[0].desc ):
+                idxNum |= 0x08
+            else:
+                idxNum |= 0x10
+            pIdxInfo->orderByConsumed = 1
+        else:
+            /* The core will sort the output, so it needs to see every row.
+                  ** A LIMIT or OFFSET applied here would discard rows before the sort */
+            idxNum &= ~0x60
+            aIdx[3] = aIdx[4] = -1
+    if( aIdx[3]==0 ):
+        /* Ignore OFFSET if LIMIT is omitted */
+        idxNum &= ~0x60
+        aIdx[4] = 0
+    for(i=0; i<7; i++):
+        if( (j = aIdx[i])>=0 ):
+            pIdxInfo->aConstraintUsage[j].argvIndex = ++nArg
+            pIdxInfo->aConstraintUsage[j].omit =
+            !SQLITE_SERIES_CONSTRAINT_VERIFY || i>=3
+    /* The current generate_column() implementation requires at least one
+      ** argument (the START value).  Legacy versions assumed START=0 if the
+      ** first argument was omitted.  Compile with -DZERO_ARGUMENT_GENERATE_SERIES
+      ** to obtain the legacy behavior */
+    #ifndef ZERO_ARGUMENT_GENERATE_SERIES
+    if( !bStartSeen ):
+        sqlite3_free(pVTab->zErrMsg)
+        pVTab->zErrMsg = sqlite3_mprintf(
+        "first argument to \"generate_series()\" missing or unusable")
+        return SQLITE_ERROR
+    #endif
+    if( (unusableMask & ~idxNum)!=0 ):
+        /* The start, stop, and step columns are inputs.  Therefore if there
+            ** are unusable constraints on any of start, stop, or step then
+            ** this plan is unusable */
+        return SQLITE_CONSTRAINT
+    if( (idxNum & 0x03)==0x03 ):
+        /* Both start= and stop= boundaries are available.  This is the
+            ** the preferred case */
+        pIdxInfo->estimatedCost = (double)(2 - ((idxNum&4)!=0))
+        pIdxInfo->estimatedRows = 1000
+    else if( (idxNum & 0x21)==0x21 ):
+        /* We have start= and LIMIT */
+        pIdxInfo->estimatedRows = 2500
+    else:
+        /* If either boundary is missing, we have to generate a huge span
+            ** of numbers.  Make this case very expensive so that the query
+            ** planner will work hard to avoid it. */
+        pIdxInfo->estimatedRows = 2147483647
+    pIdxInfo->idxNum = idxNum
+    #ifdef SQLITE_INDEX_SCAN_HEX
+    pIdxInfo->idxFlags = SQLITE_INDEX_SCAN_HEX
+    #endif
+    return SQLITE_OK
 
 /*
-** This following structure defines all the methods for the 
+** This following structure defines all the methods for the
 ** generate_series virtual table.
 */
 static sqlite3_module seriesModule = {
@@ -962,7 +917,7 @@ static sqlite3_module seriesModule = {
   0,                         /* xRollbackTo */
   0,                         /* xShadowName */
   0                          /* xIntegrity */
-};
+}
 
 #endif /* SQLITE_OMIT_VIRTUALTABLE */
 
@@ -970,19 +925,17 @@ static sqlite3_module seriesModule = {
 __declspec(dllexport)
 #endif
 int sqlite3_series_init(
-  sqlite3 *db, 
-  char **pzErrMsg, 
+  sqlite3 *db,
+  char **pzErrMsg,
   const sqlite3_api_routines *pApi
-){
-  int rc = SQLITE_OK;
-  SQLITE_EXTENSION_INIT2(pApi);
-#ifndef SQLITE_OMIT_VIRTUALTABLE
-  if( sqlite3_libversion_number()<3008012 && pzErrMsg!=0 ){
-    *pzErrMsg = sqlite3_mprintf(
-        "generate_series() requires SQLite 3.8.12 or later");
-    return SQLITE_ERROR;
-  }
-  rc = sqlite3_create_module(db, "generate_series", &seriesModule, 0);
-#endif
-  return rc;
-}
+):
+    int rc = SQLITE_OK
+    SQLITE_EXTENSION_INIT2(pApi)
+    #ifndef SQLITE_OMIT_VIRTUALTABLE
+    if( sqlite3_libversion_number()<3008012 && pzErrMsg!=0 ):
+        *pzErrMsg = sqlite3_mprintf(
+        "generate_series() requires SQLite 3.8.12 or later")
+        return SQLITE_ERROR
+    rc = sqlite3_create_module(db, "generate_series", &seriesModule, 0)
+    #endif
+    return rc

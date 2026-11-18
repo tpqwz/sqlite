@@ -26,5 +26,6 @@ extern "C" {
 int sqlite3RtreeInit(sqlite3 *db);
 
 #ifdef __cplusplus
-}  /* extern "C" */
+}
+/* extern "C" */
 #endif  /* __cplusplus */

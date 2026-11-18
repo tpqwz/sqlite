@@ -45,35 +45,30 @@
 #include <windows.h>
 #include <stdio.h>
 
-extern int utf8_main(int,char**);
-int wmain(int argc, wchar_t **wargv){
-  int rc, i;
-  char **argv = malloc( sizeof(char*) * (argc+1) );
-  char **orig = argv;
-  if( argv==0 ){
-    fprintf(stderr, "malloc failed\n");
-    exit(1);
-  }
-  for(i=0; i<argc; i++){
-    int nByte = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, 0, 0, 0, 0);
-    if( nByte==0 ){
-      argv[i] = 0;
-    }else{
-      argv[i] = malloc( nByte );
-      if( argv[i]==0 ){
-        fprintf(stderr, "malloc failed\n");
-        exit(1);
-      }
-      nByte = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, argv[i],nByte,0,0);
-      if( nByte==0 ){
-        free(argv[i]);
-        argv[i] = 0;
-      }
-    }
-  }
-  argv[argc] = 0;
-  rc = utf8_main(argc, argv);
-  for(i=0; i<argc; i++) free(orig[i]);
-  free(argv);
-  return rc;
-}
+extern int utf8_main(int,char**)
+int wmain(int argc, wchar_t **wargv):
+    int rc, i
+    char **argv = malloc( sizeof(char*) * (argc+1) )
+    char **orig = argv
+    if( argv==0 ):
+        fprintf(stderr, "malloc failed\n")
+        exit(1)
+    for(i=0; i<argc; i++):
+        int nByte = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, 0, 0, 0, 0)
+        if( nByte==0 ):
+            argv[i] = 0
+        else:
+            argv[i] = malloc( nByte )
+            if( argv[i]==0 ):
+                fprintf(stderr, "malloc failed\n")
+                exit(1)
+            nByte = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, argv[i],nByte,0,0)
+            if( nByte==0 ):
+                free(argv[i])
+                argv[i] = 0
+    argv[argc] = 0
+    rc = utf8_main(argc, argv)
+    for(i=0; i<argc; i++):
+        free(orig[i])
+    free(argv)
+    return rc

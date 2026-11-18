@@ -10,7 +10,7 @@
 **
 *************************************************************************
 **
-** This header file contains definitions of interfaces that provide 
+** This header file contains definitions of interfaces that provide
 ** cross-platform I/O for UTF-8 content.
 **
 ** On most platforms, the interfaces definitions in this file are
@@ -34,14 +34,13 @@
 #include <stdarg.h>
 #include <windows.h>
 
-FILE *sqlite3_fopen(const char *zFilename, const char *zMode);
-FILE *sqlite3_popen(const char *zCommand, const char *type);
-char *sqlite3_fgets(char *s, int size, FILE *stream);
-int sqlite3_fputs(const char *s, FILE *stream);
-int sqlite3_fprintf(FILE *stream, const char *format, ...);
-int sqlite3_vfprintf(FILE *stream, const char *format, va_list);
-void sqlite3_fsetmode(FILE *stream, int mode);
-
+FILE *sqlite3_fopen(const char *zFilename, const char *zMode)
+FILE *sqlite3_popen(const char *zCommand, const char *type)
+char *sqlite3_fgets(char *s, int size, FILE *stream)
+int sqlite3_fputs(const char *s, FILE *stream)
+int sqlite3_fprintf(FILE *stream, const char *format, ...)
+int sqlite3_vfprintf(FILE *stream, const char *format, va_list)
+void sqlite3_fsetmode(FILE *stream, int mode)
 
 #else
 /**** Definitions For All Other Platforms ****/

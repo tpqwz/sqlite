@@ -103,116 +103,104 @@ static void ieee754func(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  if( argc==1 ){
-    sqlite3_int64 m, a;
-    double r;
-    int e;
-    int isNeg;
-    char zResult[100];
-    assert( sizeof(m)==sizeof(r) );
-    if( sqlite3_value_type(argv[0])==SQLITE_BLOB
-     && sqlite3_value_bytes(argv[0])==sizeof(r)
-    ){
-      const unsigned char *x = sqlite3_value_blob(argv[0]);
-      unsigned int i;
-      sqlite3_uint64 v = 0;
-      for(i=0; i<sizeof(r); i++){
-        v = (v<<8) | x[i];
-      }
-      memcpy(&r, &v, sizeof(r));
-    }else{
-      r = sqlite3_value_double(argv[0]);
-    }
-    if( r<0.0 ){
-      isNeg = 1;
-      r = -r;
-    }else{
-      isNeg = 0;
-    }
-    memcpy(&a,&r,sizeof(a));
-    if( a==0 ){
-      e = 0;
-      m = 0;
-    }else if( a==(sqlite3_int64)0x8000000000000000LL ){
-      e = -1996;
-      m = -1;
-    }else{
-      e = a>>52;
-      m = a & ((((sqlite3_int64)1)<<52)-1);
-      if( e==0 ){
-        m <<= 1;
-      }else{
-        m |= ((sqlite3_int64)1)<<52;
-      }
-      while( e<1075 && m>0 && (m&1)==0 ){
-        m >>= 1;
-        e++;
-      }
-      if( isNeg ) m = -m;
-    }
-    switch( *(int*)sqlite3_user_data(context) ){
-      case 0:
-        sqlite3_snprintf(sizeof(zResult), zResult, "ieee754(%lld,%d)",
-                         m, e-1075);
-        sqlite3_result_text(context, zResult, -1, SQLITE_TRANSIENT);
-        break;
-      case 1:
-        sqlite3_result_int64(context, m);
-        break;
-      case 2:
-        sqlite3_result_int(context, e-1075);
-        break;
-    }
-  }else{
-    sqlite3_int64 m, e, a;
-    double r;
-    int isNeg = 0;
-    m = sqlite3_value_int64(argv[0]);
-    e = sqlite3_value_int64(argv[1]);
+):
+    if( argc==1 ):
+        sqlite3_int64 m, a
+        double r
+        int e
+        int isNeg
+        char zResult[100]
+        assert( sizeof(m)==sizeof(r) )
+        if( sqlite3_value_type(argv[0])==SQLITE_BLOB
+             && sqlite3_value_bytes(argv[0])==sizeof(r)
+            ):
+                const unsigned char *x = sqlite3_value_blob(argv[0])
+                unsigned int i
+                sqlite3_uint64 v = 0
+                for(i=0; i<sizeof(r); i++):
+                    v = (v<<8) | x[i]
+                memcpy(&r, &v, sizeof(r))
+        else:
+            r = sqlite3_value_double(argv[0])
+        if( r<0.0 ):
+            isNeg = 1
+            r = -r
+        else:
+            isNeg = 0
+        memcpy(&a,&r,sizeof(a))
+        if( a==0 ):
+            e = 0
+            m = 0
+        else if( a==(sqlite3_int64)0x8000000000000000LL ):
+            e = -1996
+            m = -1
+        else:
+            e = a>>52
+            m = a & ((((sqlite3_int64)1)<<52)-1)
+            if( e==0 ):
+                m <<= 1
+            else:
+                m |= ((sqlite3_int64)1)<<52
+            while( e<1075 && m>0 && (m&1)==0 ):
+                m >>= 1
+                e++
+            if( isNeg ):
+                m = -m
+        switch( *(int*)sqlite3_user_data(context) ):
+            case 0:
+                sqlite3_snprintf(sizeof(zResult), zResult, "ieee754(%lld,%d)",
+                         m, e-1075)
+                sqlite3_result_text(context, zResult, -1, SQLITE_TRANSIENT)
+                break
+            case 1:
+                sqlite3_result_int64(context, m)
+                break
+            case 2:
+                sqlite3_result_int(context, e-1075)
+                break
+    else:
+        sqlite3_int64 m, e, a
+        double r
+        int isNeg = 0
+        m = sqlite3_value_int64(argv[0])
+        e = sqlite3_value_int64(argv[1])
 
-    /* Limit the range of e.  Ticket 22dea1cfdb9151e4 2021-03-02 */
-    if( e>10000 ){
-      e = 10000;
-    }else if( e<-10000 ){
-      e = -10000;
-    }
+        /* Limit the range of e.  Ticket 22dea1cfdb9151e4 2021-03-02 */
+        if( e>10000 ):
+            e = 10000
+        else if( e<-10000 ):
+            e = -10000
 
-    if( m<0 ){
-      if( m<(-9223372036854775807LL) ) return;
-      isNeg = 1;
-      m = -m;
-    }else if( m==0 ){
-      sqlite3_result_double(context, 0.0);
-      return;
-    }
-    while( (m>>32)&0xffe00000 ){
-      m >>= 1;
-      e++;
-    }
-    while( m!=0 && ((m>>32)&0xfff00000)==0 ){
-      m <<= 1;
-      e--;
-    }
-    e += 1075;
-    if( e<=0 ){
-      /* Subnormal */
-      if( 1-e >= 64 ){
-        m = 0;
-      }else{
-        m >>= 1-e;
-      }
-      e = 0;
-    }else if( e>0x7ff ){
-      e = 0x7ff;
-    }
-    a = m & ((((sqlite3_int64)1)<<52)-1);
-    a |= e<<52;
-    if( isNeg ) a |= ((sqlite3_uint64)1)<<63;
-    memcpy(&r, &a, sizeof(r));
-    sqlite3_result_double(context, r);
-  }
-}
+        if( m<0 ):
+            if( m<(-9223372036854775807LL) ):
+                return
+            isNeg = 1
+            m = -m
+        else if( m==0 ):
+            sqlite3_result_double(context, 0.0)
+            return
+        while( (m>>32)&0xffe00000 ):
+            m >>= 1
+            e++
+        while( m!=0 && ((m>>32)&0xfff00000)==0 ):
+            m <<= 1
+            e--
+        e += 1075
+        if( e<=0 ):
+            /* Subnormal */
+            if( 1-e >= 64 ):
+                m = 0
+            else:
+                m >>= 1-e
+            e = 0
+        else if( e>0x7ff ):
+            e = 0x7ff
+        a = m & ((((sqlite3_int64)1)<<52)-1)
+        a |= e<<52
+        if( isNeg ):
+            a |= ((sqlite3_uint64)1)<<63
+        memcpy(&r, &a, sizeof(r))
+        sqlite3_result_double(context, r)
 
 /*
 ** Functions to convert between blobs and floats.
@@ -221,43 +209,37 @@ static void ieee754func_from_blob(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  UNUSED_PARAMETER(argc);
-  if( sqlite3_value_type(argv[0])==SQLITE_BLOB
-   && sqlite3_value_bytes(argv[0])==sizeof(double)
-  ){
-    double r;
-    const unsigned char *x = sqlite3_value_blob(argv[0]);
-    unsigned int i;
-    sqlite3_uint64 v = 0;
-    for(i=0; i<sizeof(r); i++){
-      v = (v<<8) | x[i];
-    }
-    memcpy(&r, &v, sizeof(r));
-    sqlite3_result_double(context, r);
-  }
-}
+):
+    UNUSED_PARAMETER(argc)
+    if( sqlite3_value_type(argv[0])==SQLITE_BLOB
+       && sqlite3_value_bytes(argv[0])==sizeof(double)
+      ):
+        double r
+        const unsigned char *x = sqlite3_value_blob(argv[0])
+        unsigned int i
+        sqlite3_uint64 v = 0
+        for(i=0; i<sizeof(r); i++):
+            v = (v<<8) | x[i]
+        memcpy(&r, &v, sizeof(r))
+        sqlite3_result_double(context, r)
 static void ieee754func_to_blob(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  UNUSED_PARAMETER(argc);
-  if( sqlite3_value_type(argv[0])==SQLITE_FLOAT
-   || sqlite3_value_type(argv[0])==SQLITE_INTEGER
-  ){
-    double r = sqlite3_value_double(argv[0]);
-    sqlite3_uint64 v;
-    unsigned char a[sizeof(r)];
-    unsigned int i;
-    memcpy(&v, &r, sizeof(r));
-    for(i=1; i<=sizeof(r); i++){
-      a[sizeof(r)-i] = v&0xff;
-      v >>= 8;
-    }
-    sqlite3_result_blob(context, a, sizeof(r), SQLITE_TRANSIENT);
-  }
-}
+):
+    UNUSED_PARAMETER(argc)
+    if( sqlite3_value_type(argv[0])==SQLITE_FLOAT
+       || sqlite3_value_type(argv[0])==SQLITE_INTEGER
+      ):
+        double r = sqlite3_value_double(argv[0])
+        sqlite3_uint64 v
+        unsigned char a[sizeof(r)]
+        unsigned int i
+        memcpy(&v, &r, sizeof(r))
+        for(i=1; i<=sizeof(r); i++):
+            a[sizeof(r)-i] = v&0xff
+            v >>= 8
+        sqlite3_result_blob(context, a, sizeof(r), SQLITE_TRANSIENT)
 
 /*
 ** Functions to convert between 64-bit integers and floats.
@@ -268,28 +250,24 @@ static void ieee754func_from_int(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  UNUSED_PARAMETER(argc);
-  if( sqlite3_value_type(argv[0])==SQLITE_INTEGER ){
-    double r;
-    sqlite3_int64 v = sqlite3_value_int64(argv[0]);
-    memcpy(&r, &v, sizeof(r));
-    sqlite3_result_double(context, r);
-  }
-}
+):
+    UNUSED_PARAMETER(argc)
+    if( sqlite3_value_type(argv[0])==SQLITE_INTEGER ):
+        double r
+        sqlite3_int64 v = sqlite3_value_int64(argv[0])
+        memcpy(&r, &v, sizeof(r))
+        sqlite3_result_double(context, r)
 static void ieee754func_to_int(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  UNUSED_PARAMETER(argc);
-  if( sqlite3_value_type(argv[0])==SQLITE_FLOAT ){
-    double r = sqlite3_value_double(argv[0]);
-    sqlite3_uint64 v;
-    memcpy(&v, &r, sizeof(v));
-    sqlite3_result_int64(context, v);
-  }
-}
+):
+    UNUSED_PARAMETER(argc)
+    if( sqlite3_value_type(argv[0])==SQLITE_FLOAT ):
+        double r = sqlite3_value_double(argv[0])
+        sqlite3_uint64 v
+        memcpy(&v, &r, sizeof(v))
+        sqlite3_result_int64(context, v)
 
 /*
 ** SQL Function:   ieee754_inc(r,N)
@@ -308,54 +286,50 @@ static void ieee754inc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  double r;
-  sqlite3_int64 N;
-  sqlite3_uint64 m1, m2;
-  double r2;
-  UNUSED_PARAMETER(argc);
-  r = sqlite3_value_double(argv[0]);
-  N = sqlite3_value_int64(argv[1]);
-  memcpy(&m1, &r, 8);
-  m2 = m1 + N;
-  memcpy(&r2, &m2, 8);
-  sqlite3_result_double(context, r2);
-}
-
+):
+    double r
+    sqlite3_int64 N
+    sqlite3_uint64 m1, m2
+    double r2
+    UNUSED_PARAMETER(argc)
+    r = sqlite3_value_double(argv[0])
+    N = sqlite3_value_int64(argv[1])
+    memcpy(&m1, &r, 8)
+    m2 = m1 + N
+    memcpy(&r2, &m2, 8)
+    sqlite3_result_double(context, r2)
 
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
 int sqlite3_ieee_init(
-  sqlite3 *db, 
-  char **pzErrMsg, 
+  sqlite3 *db,
+  char **pzErrMsg,
   const sqlite3_api_routines *pApi
-){
-  static const struct {
-    char *zFName;
-    int nArg;
-    int iAux;
-    void (*xFunc)(sqlite3_context*,int,sqlite3_value**);
-  } aFunc[] = {
-    { "ieee754",           1,   0, ieee754func },
-    { "ieee754",           2,   0, ieee754func },
-    { "ieee754_mantissa",  1,   1, ieee754func },
-    { "ieee754_exponent",  1,   2, ieee754func },
-    { "ieee754_to_blob",   1,   0, ieee754func_to_blob },
-    { "ieee754_from_blob", 1,   0, ieee754func_from_blob },
-    { "ieee754_to_int",    1,   0, ieee754func_to_int },
-    { "ieee754_from_int",  1,   0, ieee754func_from_int },
-    { "ieee754_inc",       2,   0, ieee754inc  },
-  };
-  unsigned int i;
-  int rc = SQLITE_OK;
-  SQLITE_EXTENSION_INIT2(pApi);
-  (void)pzErrMsg;  /* Unused parameter */
-  for(i=0; i<sizeof(aFunc)/sizeof(aFunc[0]) && rc==SQLITE_OK; i++){
-    rc = sqlite3_create_function(db, aFunc[i].zFName, aFunc[i].nArg,
+):
+    static const struct {
+        char *zFName;
+        int nArg;
+        int iAux;
+        void (*xFunc)(sqlite3_context*,int,sqlite3_value**);
+      } aFunc[] = {
+        { "ieee754",           1,   0, ieee754func },
+        { "ieee754",           2,   0, ieee754func },
+        { "ieee754_mantissa",  1,   1, ieee754func },
+        { "ieee754_exponent",  1,   2, ieee754func },
+        { "ieee754_to_blob",   1,   0, ieee754func_to_blob },
+        { "ieee754_from_blob", 1,   0, ieee754func_from_blob },
+        { "ieee754_to_int",    1,   0, ieee754func_to_int },
+        { "ieee754_from_int",  1,   0, ieee754func_from_int },
+        { "ieee754_inc",       2,   0, ieee754inc  },
+      };
+    unsigned int i
+    int rc = SQLITE_OK
+    SQLITE_EXTENSION_INIT2(pApi)
+    (void)pzErrMsg /* Unused parameter */
+    for(i=0; i<sizeof(aFunc)/sizeof(aFunc[0]) && rc==SQLITE_OK; i++):
+        rc = sqlite3_create_function(db, aFunc[i].zFName, aFunc[i].nArg,
                                SQLITE_UTF8|SQLITE_INNOCUOUS,
                                (void*)&aFunc[i].iAux,
-                               aFunc[i].xFunc, 0, 0);
-  }
-  return rc;
-}
+                               aFunc[i].xFunc, 0, 0)
+    return rc

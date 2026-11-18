@@ -32,7 +32,7 @@
 ** a limit on the size parameter to sqlite3_malloc() and sqlite3_realloc().
 **
 ** The upper bound is slightly less than 2GiB:  0x7ffffeff == 2,147,483,391
-** This provides a 256-byte safety margin for defense against 32-bit 
+** This provides a 256-byte safety margin for defense against 32-bit
 ** signed integer overflow bugs when computing memory allocation sizes.
 ** Paranoid applications might want to reduce the maximum allocation size
 ** further for an even larger safety margin.  0x3fffffff or 0x0fffffff
@@ -179,7 +179,6 @@
 # define SQLITE_MAX_ATTACHED 10
 #endif
 
-
 /*
 ** The maximum value of a ?nnn wildcard that the parser will accept.
 ** If the value exceeds 32767 then extra space is required for the Expr
@@ -205,7 +204,6 @@
 # undef SQLITE_MAX_PAGE_SIZE
 #endif
 #define SQLITE_MAX_PAGE_SIZE 65536
-
 
 /*
 ** The default size of a database page.
@@ -236,7 +234,6 @@
 # undef SQLITE_MAX_DEFAULT_PAGE_SIZE
 # define SQLITE_MAX_DEFAULT_PAGE_SIZE SQLITE_DEFAULT_PAGE_SIZE
 #endif
-
 
 /*
 ** Maximum number of pages in one database file.

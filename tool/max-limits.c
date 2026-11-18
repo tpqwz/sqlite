@@ -25,19 +25,15 @@ static const struct {
   { SQLITE_LIMIT_SCHEMA,                "SQLITE_MAX_SCHEMA"               },
 };
 
-static int maxLimit(sqlite3 *db, int eCode){
-  int iOrig = sqlite3_limit(db, eCode, 0x7fffffff);
-  return sqlite3_limit(db, eCode, iOrig);
-}
+static int maxLimit(sqlite3 *db, int eCode):
+    int iOrig = sqlite3_limit(db, eCode, 0x7fffffff)
+    return sqlite3_limit(db, eCode, iOrig)
 
-int main(int argc, char **argv){
-  sqlite3 *db;
-  int j, rc;
-  rc = sqlite3_open(":memory:", &db);
-  if( rc==SQLITE_OK ){
-    for(j=0; j<sizeof(aLimit)/sizeof(aLimit[0]); j++){
-      printf("%-35s %10d\n", aLimit[j].zName, maxLimit(db, aLimit[j].eCode));
-    }
-    sqlite3_close(db);
-  } 
-}
+int main(int argc, char **argv):
+    sqlite3 *db
+    int j, rc
+    rc = sqlite3_open(":memory:", &db)
+    if( rc==SQLITE_OK ):
+        for(j=0; j<sizeof(aLimit)/sizeof(aLimit[0]); j++):
+            printf("%-35s %10d\n", aLimit[j].zName, maxLimit(db, aLimit[j].eCode))
+        sqlite3_close(db)

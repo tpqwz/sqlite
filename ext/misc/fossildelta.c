@@ -48,23 +48,22 @@
 #include "sqlite3ext.h"
 SQLITE_EXTENSION_INIT1
 
-#ifndef SQLITE_AMALGAMATION
-/*
-** The "u32" type must be an unsigned 32-bit integer.  "u64" is
-** an unsigned 64-bit integer.
-*/
-typedef unsigned int u32;
-typedef sqlite3_uint64 u64;
-typedef sqlite3_int64 i64;
+    #ifndef SQLITE_AMALGAMATION
+    /*
+    ** The "u32" type must be an unsigned 32-bit integer.  "u64" is
+    ** an unsigned 64-bit integer.
+    */
+    typedef unsigned int u32
+typedef sqlite3_uint64 u64
+typedef sqlite3_int64 i64
 
 /*
 ** Must be a 16-bit value
 */
-typedef short int s16;
-typedef unsigned short int u16;
+typedef short int s16
+typedef unsigned short int u16
 
 #endif /* SQLITE_AMALGAMATION */
-
 
 /*
 ** The width of a hash window in bytes.  The algorithm only works if this
@@ -84,46 +83,41 @@ typedef unsigned short int u16;
 ** (Each index for z[] should be module NHASH, of course.  The %NHASH operator
 ** is omitted in the prior expression for brevity.)
 */
-typedef struct hash hash;
-struct hash {
-  u16 a, b;         /* Hash values */
-  u16 i;            /* Start of the hash window */
-  char z[NHASH];    /* The values that have been hashed */
-};
+typedef struct hash hash
+struct hash:
+    u16 a, b /* Hash values */
+    u16 i /* Start of the hash window */
+    char z[NHASH] /* The values that have been hashed */
 
 /*
 ** Initialize the rolling hash using the first NHASH characters of z[]
 */
-static void hash_init(hash *pHash, const char *z){
-  u16 a, b, i;
-  a = b = z[0];
-  for(i=1; i<NHASH; i++){
-    a += z[i];
-    b += a;
-  }
-  memcpy(pHash->z, z, NHASH);
-  pHash->a = a & 0xffff;
-  pHash->b = b & 0xffff;
-  pHash->i = 0;
-}
+static void hash_init(hash *pHash, const char *z):
+    u16 a, b, i
+    a = b = z[0]
+    for(i=1; i<NHASH; i++):
+        a += z[i]
+        b += a
+    memcpy(pHash->z, z, NHASH)
+    pHash->a = a & 0xffff
+    pHash->b = b & 0xffff
+    pHash->i = 0
 
 /*
 ** Advance the rolling hash by a single character "c"
 */
-static void hash_next(hash *pHash, int c){
-  u16 old = pHash->z[pHash->i];
-  pHash->z[pHash->i] = c;
-  pHash->i = (pHash->i+1)&(NHASH-1);
-  pHash->a = pHash->a - old + c;
-  pHash->b = pHash->b - NHASH*old + pHash->a;
-}
+static void hash_next(hash *pHash, int c):
+    u16 old = pHash->z[pHash->i]
+    pHash->z[pHash->i] = c
+    pHash->i = (pHash->i+1)&(NHASH-1)
+    pHash->a = pHash->a - old + c
+    pHash->b = pHash->b - NHASH*old + pHash->a
 
 /*
 ** Return a 32-bit hash value
 */
-static u32 hash_32bit(hash *pHash){
-  return (pHash->a & 0xffff) | (((u32)(pHash->b & 0xffff))<<16);
-}
+static u32 hash_32bit(hash *pHash):
+    return (pHash->a & 0xffff) | (((u32)(pHash->b & 0xffff))<<16)
 
 /*
 ** Compute a hash on NHASH bytes.
@@ -133,36 +127,30 @@ static u32 hash_32bit(hash *pHash){
 **    hash_init(&h, zInput);
 **    return hash_32bit(&h);
 */
-static u32 hash_once(const char *z){
-  u16 a, b, i;
-  a = b = z[0];
-  for(i=1; i<NHASH; i++){
-    a += z[i];
-    b += a;
-  }
-  return a | (((u32)b)<<16);
-}
+static u32 hash_once(const char *z):
+    u16 a, b, i
+    a = b = z[0]
+    for(i=1; i<NHASH; i++):
+        a += z[i]
+        b += a
+    return a | (((u32)b)<<16)
 
 /*
 ** Write an base-64 integer into the given buffer.
 */
-static void putInt(unsigned int v, char **pz){
-  static const char zDigits[] =
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~";
-  /*  123456789 123456789 123456789 123456789 123456789 123456789 123 */
-  int i, j;
-  char zBuf[20];
-  if( v==0 ){
-    *(*pz)++ = '0';
-    return;
-  }
-  for(i=0; v>0; i++, v>>=6){
-    zBuf[i] = zDigits[v&0x3f];
-  }
-  for(j=i-1; j>=0; j--){
-    *(*pz)++ = zBuf[j];
-  }
-}
+static void putInt(unsigned int v, char **pz):
+    static const char zDigits[] =
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~"
+    /*  123456789 123456789 123456789 123456789 123456789 123456789 123 */
+    int i, j
+    char zBuf[20]
+    if( v==0 ):
+        *(*pz)++ = '0'
+        return
+    for(i=0; v>0; i++, v>>=6):
+        zBuf[i] = zDigits[v&0x3f]
+    for(j=i-1; j>=0; j--):
+        *(*pz)++ = zBuf[j]
 
 /*
 ** Read bytes from *pz and convert them into a positive integer.  When
@@ -170,8 +158,8 @@ static void putInt(unsigned int v, char **pz){
 ** the integer.  The *pLen parameter holds the length of the string
 ** in *pz and is decremented once for each character in the integer.
 */
-static unsigned int deltaGetInt(const char **pz, int *pLen){
-  static const signed char zValue[] = {
+static unsigned int deltaGetInt(const char **pz, int *pLen):
+    static const signed char zValue[] = {
     -1, -1, -1, -1, -1, -1, -1, -1,   -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1,   -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1,   -1, -1, -1, -1, -1, -1, -1, -1,
@@ -189,29 +177,26 @@ static unsigned int deltaGetInt(const char **pz, int *pLen){
     -1, -1, -1, -1, -1, -1, -1, -1,   -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1,   -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1,   -1, -1, -1, -1, -1, -1, -1, -1,
-  };
-  unsigned int v = 0;
-  int c;
-  unsigned char *z = (unsigned char*)*pz;
-  unsigned char *zEnd = z + (*pLen);
-  while( z<zEnd && (c = zValue[*z])>=0 ){
-    v = (v<<6) + c;
-    z++;
-  }
+    }
+    unsigned int v = 0
+    int c
+    unsigned char *z = (unsigned char*)*pz
+    unsigned char *zEnd = z + (*pLen)
+    while( z<zEnd && (c = zValue[*z])>=0 ):
+        v = (v<<6) + c
+        z++
 
-  *pLen -= (int)(z - (unsigned char*)*pz);
-  *pz = (char*)z;
-  return v;
-}
+    *pLen -= (int)(z - (unsigned char*)*pz)
+    *pz = (char*)z
+    return v
 
 /*
 ** Return the number digits in the base-64 representation of a positive integer
 */
-static int digit_count(int v){
-  unsigned int i, x;
-  for(i=1, x=64; v>=x; i++, x <<= 6){}
-  return i;
-}
+static int digit_count(int v):
+    unsigned int i, x
+    for(i=1, x=64; v>=x; i++, x <<= 6):
+    return i
 
 #ifdef __GNUC__
 # define GCC_VERSION (__GNUC__*1000000+__GNUC_MINOR__*1000+__GNUC_PATCHLEVEL__)
@@ -225,61 +210,56 @@ static int digit_count(int v){
 ** have occurred if the buffer was padded with zeros to the next multiple
 ** of four bytes.
 */
-static unsigned int checksum(const char *zIn, size_t N){
-  static const int byteOrderTest = 1;
-  const unsigned char *z = (const unsigned char *)zIn;
-  const unsigned char *zEnd = (const unsigned char*)&zIn[N&~3];
-  unsigned sum = 0;
-  assert( (z - (const unsigned char*)0)%4==0 );  /* Four-byte alignment */
-  if( 0==*(char*)&byteOrderTest ){
-    /* This is a big-endian machine */
-    while( z<zEnd ){
-      sum += *(unsigned*)z;
-      z += 4;
-    }
-  }else{
-    /* A little-endian machine */
-#if GCC_VERSION>=4003000
-    while( z<zEnd ){
-      sum += __builtin_bswap32(*(unsigned*)z);
-      z += 4;
-    }
-#elif defined(_MSC_VER) && _MSC_VER>=1300
-    while( z<zEnd ){
-      sum += _byteswap_ulong(*(unsigned*)z);
-      z += 4;
-    }
-#else
-    unsigned sum0 = 0;
-    unsigned sum1 = 0;
-    unsigned sum2 = 0;
-    while(N >= 16){
-      sum0 += ((unsigned)z[0] + z[4] + z[8] + z[12]);
-      sum1 += ((unsigned)z[1] + z[5] + z[9] + z[13]);
-      sum2 += ((unsigned)z[2] + z[6] + z[10]+ z[14]);
-      sum  += ((unsigned)z[3] + z[7] + z[11]+ z[15]);
-      z += 16;
-      N -= 16;
-    }
-    while(N >= 4){
-      sum0 += z[0];
-      sum1 += z[1];
-      sum2 += z[2];
-      sum  += z[3];
-      z += 4;
-      N -= 4;
-    }
-    sum += (sum2 << 8) + (sum1 << 16) + (sum0 << 24);
-#endif
-  }
-  switch(N&3){
-    case 3:   sum += ((unsigned)z[2] << 8);
-    case 2:   sum += ((unsigned)z[1] << 16);
-    case 1:   sum += ((unsigned)z[0] << 24);
-    default:  ;
-  }
-  return sum;
-}
+static unsigned int checksum(const char *zIn, size_t N):
+    static const int byteOrderTest = 1
+    const unsigned char *z = (const unsigned char *)zIn
+    const unsigned char *zEnd = (const unsigned char*)&zIn[N&~3]
+    unsigned sum = 0
+    assert( (z - (const unsigned char*)0)%4==0 ) /* Four-byte alignment */
+    if( 0==*(char*)&byteOrderTest ):
+        /* This is a big-endian machine */
+        while( z<zEnd ):
+            sum += *(unsigned*)z
+            z += 4
+    else:
+        /* A little-endian machine */
+        #if GCC_VERSION>=4003000
+        while( z<zEnd ):
+            sum += __builtin_bswap32(*(unsigned*)z)
+            z += 4
+        #elif defined(_MSC_VER) && _MSC_VER>=1300
+        while( z<zEnd ):
+            sum += _byteswap_ulong(*(unsigned*)z)
+            z += 4
+        #else
+        unsigned sum0 = 0
+        unsigned sum1 = 0
+        unsigned sum2 = 0
+        while(N >= 16):
+            sum0 += ((unsigned)z[0] + z[4] + z[8] + z[12])
+            sum1 += ((unsigned)z[1] + z[5] + z[9] + z[13])
+            sum2 += ((unsigned)z[2] + z[6] + z[10]+ z[14])
+            sum  += ((unsigned)z[3] + z[7] + z[11]+ z[15])
+            z += 16
+            N -= 16
+        while(N >= 4):
+            sum0 += z[0]
+            sum1 += z[1]
+            sum2 += z[2]
+            sum  += z[3]
+            z += 4
+            N -= 4
+        sum += (sum2 << 8) + (sum1 << 16) + (sum0 << 24)
+        #endif
+    switch(N&3):
+        case 3:
+            sum += ((unsigned)z[2] << 8)
+        case 2:
+            sum += ((unsigned)z[1] << 16)
+        case 1:
+            sum += ((unsigned)z[0] << 24)
+        default:
+    return sum
 
 /*
 ** Create a new delta.
@@ -349,177 +329,166 @@ static int delta_create(
   const char *zOut,      /* The target file */
   unsigned int lenOut,   /* Length of the target file */
   char *zDelta           /* Write the delta into this buffer */
-){
-  int i, base;
-  char *zOrigDelta = zDelta;
-  hash h;
-  int nHash;                 /* Number of hash table entries */
-  int *landmark;             /* Primary hash table */
-  int *collide;              /* Collision chain */
-  int lastRead = -1;         /* Last byte of zSrc read by a COPY command */
+):
+    int i, base
+    char *zOrigDelta = zDelta
+    hash h
+    int nHash /* Number of hash table entries */
+    int *landmark /* Primary hash table */
+    int *collide /* Collision chain */
+    int lastRead = -1 /* Last byte of zSrc read by a COPY command */
 
-  /* Add the target file size to the beginning of the delta
-  */
-  putInt(lenOut, &zDelta);
-  *(zDelta++) = '\n';
-
-  /* If the source file is very small, it means that we have no
-  ** chance of ever doing a copy command.  Just output a single
-  ** literal segment for the entire target and exit.
-  */
-  if( lenSrc<=NHASH ){
-    putInt(lenOut, &zDelta);
-    *(zDelta++) = ':';
-    memcpy(zDelta, zOut, lenOut);
-    zDelta += lenOut;
-    putInt(checksum(zOut, lenOut), &zDelta);
-    *(zDelta++) = ';';
-    return zDelta - zOrigDelta;
-  }
-
-  /* Compute the hash table used to locate matching sections in the
-  ** source file.
-  */
-  nHash = lenSrc/NHASH;
-  collide = sqlite3_malloc64( (sqlite3_int64)nHash*2*sizeof(int) );
-  if( collide==0 ) return 0;
-  memset(collide, -1, nHash*2*sizeof(int));
-  landmark = &collide[nHash];
-  for(i=0; i<lenSrc-NHASH; i+=NHASH){
-    int hv = hash_once(&zSrc[i]) % nHash;
-    collide[i/NHASH] = landmark[hv];
-    landmark[hv] = i/NHASH;
-  }
-
-  /* Begin scanning the target file and generating copy commands and
-  ** literal sections of the delta.
-  */
-  base = 0;    /* We have already generated everything before zOut[base] */
-  while( base+NHASH<lenOut ){
-    int iSrc, iBlock;
-    unsigned int bestCnt, bestOfst=0, bestLitsz=0;
-    hash_init(&h, &zOut[base]);
-    i = 0;     /* Trying to match a landmark against zOut[base+i] */
-    bestCnt = 0;
-    while( 1 ){
-      int hv;
-      int limit = 250;
-
-      hv = hash_32bit(&h) % nHash;
-      iBlock = landmark[hv];
-      while( iBlock>=0 && (limit--)>0 ){
-        /*
-        ** The hash window has identified a potential match against
-        ** landmark block iBlock.  But we need to investigate further.
-        **
-        ** Look for a region in zOut that matches zSrc. Anchor the search
-        ** at zSrc[iSrc] and zOut[base+i].  Do not include anything prior to
-        ** zOut[base] or after zOut[outLen] nor anything after zSrc[srcLen].
-        **
-        ** Set cnt equal to the length of the match and set ofst so that
-        ** zSrc[ofst] is the first element of the match.  litsz is the number
-        ** of characters between zOut[base] and the beginning of the match.
-        ** sz will be the overhead (in bytes) needed to encode the copy
-        ** command.  Only generate copy command if the overhead of the
-        ** copy command is less than the amount of literal text to be copied.
-        */
-        int cnt, ofst, litsz;
-        int j, k, x, y;
-        int sz;
-        int limitX;
-
-        /* Beginning at iSrc, match forwards as far as we can.  j counts
-        ** the number of characters that match */
-        iSrc = iBlock*NHASH;
-        y = base+i;
-        limitX = ( lenSrc-iSrc <= lenOut-y ) ? lenSrc : iSrc + lenOut - y;
-        for(x=iSrc; x<limitX; x++, y++){
-          if( zSrc[x]!=zOut[y] ) break;
-        }
-        j = x - iSrc - 1;
-
-        /* Beginning at iSrc-1, match backwards as far as we can.  k counts
-        ** the number of characters that match */
-        for(k=1; k<iSrc && k<=i; k++){
-          if( zSrc[iSrc-k]!=zOut[base+i-k] ) break;
-        }
-        k--;
-
-        /* Compute the offset and size of the matching region */
-        ofst = iSrc-k;
-        cnt = j+k+1;
-        litsz = i-k;  /* Number of bytes of literal text before the copy */
-        /* sz will hold the number of bytes needed to encode the "insert"
-        ** command and the copy command, not counting the "insert" text */
-        sz = digit_count(i-k)+digit_count(cnt)+digit_count(ofst)+3;
-        if( cnt>=sz && cnt>bestCnt ){
-          /* Remember this match only if it is the best so far and it
-          ** does not increase the file size */
-          bestCnt = cnt;
-          bestOfst = iSrc-k;
-          bestLitsz = litsz;
-        }
-
-        /* Check the next matching block */
-        iBlock = collide[iBlock];
-      }
-
-      /* We have a copy command that does not cause the delta to be larger
-      ** than a literal insert.  So add the copy command to the delta.
+    /* Add the target file size to the beginning of the delta
       */
-      if( bestCnt>0 ){
-        if( bestLitsz>0 ){
-          /* Add an insert command before the copy */
-          putInt(bestLitsz,&zDelta);
-          *(zDelta++) = ':';
-          memcpy(zDelta, &zOut[base], bestLitsz);
-          zDelta += bestLitsz;
-          base += bestLitsz;
-        }
-        base += bestCnt;
-        putInt(bestCnt, &zDelta);
-        *(zDelta++) = '@';
-        putInt(bestOfst, &zDelta);
-        *(zDelta++) = ',';
-        if( bestOfst + bestCnt -1 > lastRead ){
-          lastRead = bestOfst + bestCnt - 1;
-        }
-        bestCnt = 0;
-        break;
-      }
+    putInt(lenOut, &zDelta)
+    *(zDelta++) = '\n'
 
-      /* If we reach this point, it means no match is found so far */
-      if( base+i+NHASH>=lenOut ){
-        /* We have reached the end of the file and have not found any
-        ** matches.  Do an "insert" for everything that does not match */
-        putInt(lenOut-base, &zDelta);
-        *(zDelta++) = ':';
-        memcpy(zDelta, &zOut[base], lenOut-base);
-        zDelta += lenOut-base;
-        base = lenOut;
-        break;
-      }
+    /* If the source file is very small, it means that we have no
+      ** chance of ever doing a copy command.  Just output a single
+      ** literal segment for the entire target and exit.
+      */
+    if( lenSrc<=NHASH ):
+        putInt(lenOut, &zDelta)
+        *(zDelta++) = ':'
+        memcpy(zDelta, zOut, lenOut)
+        zDelta += lenOut
+        putInt(checksum(zOut, lenOut), &zDelta)
+        *(zDelta++) = ';'
+        return zDelta - zOrigDelta
 
-      /* Advance the hash by one character.  Keep looking for a match */
-      hash_next(&h, zOut[base+i+NHASH]);
-      i++;
-    }
-  }
-  /* Output a final "insert" record to get all the text at the end of
-  ** the file that does not match anything in the source file.
-  */
-  if( base<lenOut ){
-    putInt(lenOut-base, &zDelta);
-    *(zDelta++) = ':';
-    memcpy(zDelta, &zOut[base], lenOut-base);
-    zDelta += lenOut-base;
-  }
-  /* Output the final checksum record. */
-  putInt(checksum(zOut, lenOut), &zDelta);
-  *(zDelta++) = ';';
-  sqlite3_free(collide);
-  return zDelta - zOrigDelta;
-}
+    /* Compute the hash table used to locate matching sections in the
+      ** source file.
+      */
+    nHash = lenSrc/NHASH
+    collide = sqlite3_malloc64( (sqlite3_int64)nHash*2*sizeof(int) )
+    if( collide==0 ):
+        return 0
+    memset(collide, -1, nHash*2*sizeof(int))
+    landmark = &collide[nHash]
+    for(i=0; i<lenSrc-NHASH; i+=NHASH):
+        int hv = hash_once(&zSrc[i]) % nHash
+        collide[i/NHASH] = landmark[hv]
+        landmark[hv] = i/NHASH
+
+    /* Begin scanning the target file and generating copy commands and
+      ** literal sections of the delta.
+      */
+    base = 0 /* We have already generated everything before zOut[base] */
+    while( base+NHASH<lenOut ):
+        int iSrc, iBlock
+        unsigned int bestCnt, bestOfst=0, bestLitsz=0
+        hash_init(&h, &zOut[base])
+        i = 0 /* Trying to match a landmark against zOut[base+i] */
+        bestCnt = 0
+        while( 1 ):
+            int hv
+            int limit = 250
+
+            hv = hash_32bit(&h) % nHash
+            iBlock = landmark[hv]
+            while( iBlock>=0 && (limit--)>0 ):
+                /*
+                        ** The hash window has identified a potential match against
+                        ** landmark block iBlock.  But we need to investigate further.
+                        **
+                        ** Look for a region in zOut that matches zSrc. Anchor the search
+                        ** at zSrc[iSrc] and zOut[base+i].  Do not include anything prior to
+                        ** zOut[base] or after zOut[outLen] nor anything after zSrc[srcLen].
+                        **
+                        ** Set cnt equal to the length of the match and set ofst so that
+                        ** zSrc[ofst] is the first element of the match.  litsz is the number
+                        ** of characters between zOut[base] and the beginning of the match.
+                        ** sz will be the overhead (in bytes) needed to encode the copy
+                        ** command.  Only generate copy command if the overhead of the
+                        ** copy command is less than the amount of literal text to be copied.
+                        */
+                int cnt, ofst, litsz
+                int j, k, x, y
+                int sz
+                int limitX
+
+                /* Beginning at iSrc, match forwards as far as we can.  j counts
+                        ** the number of characters that match */
+                iSrc = iBlock*NHASH
+                y = base+i
+                limitX = ( lenSrc-iSrc <= lenOut-y ) ? lenSrc : iSrc + lenOut - y
+                for(x=iSrc; x<limitX; x++, y++):
+                    if( zSrc[x]!=zOut[y] ):
+                        break
+                j = x - iSrc - 1
+
+                /* Beginning at iSrc-1, match backwards as far as we can.  k counts
+                        ** the number of characters that match */
+                for(k=1; k<iSrc && k<=i; k++):
+                    if( zSrc[iSrc-k]!=zOut[base+i-k] ):
+                        break
+                k--
+
+                /* Compute the offset and size of the matching region */
+                ofst = iSrc-k
+                cnt = j+k+1
+                litsz = i-k /* Number of bytes of literal text before the copy */
+                /* sz will hold the number of bytes needed to encode the "insert"
+                        ** command and the copy command, not counting the "insert" text */
+                sz = digit_count(i-k)+digit_count(cnt)+digit_count(ofst)+3
+                if( cnt>=sz && cnt>bestCnt ):
+                    /* Remember this match only if it is the best so far and it
+                              ** does not increase the file size */
+                    bestCnt = cnt
+                    bestOfst = iSrc-k
+                    bestLitsz = litsz
+
+                /* Check the next matching block */
+                iBlock = collide[iBlock]
+
+            /* We have a copy command that does not cause the delta to be larger
+                  ** than a literal insert.  So add the copy command to the delta.
+                  */
+            if( bestCnt>0 ):
+                if( bestLitsz>0 ):
+                    /* Add an insert command before the copy */
+                    putInt(bestLitsz,&zDelta)
+                    *(zDelta++) = ':'
+                    memcpy(zDelta, &zOut[base], bestLitsz)
+                    zDelta += bestLitsz
+                    base += bestLitsz
+                base += bestCnt
+                putInt(bestCnt, &zDelta)
+                *(zDelta++) = '@'
+                putInt(bestOfst, &zDelta)
+                *(zDelta++) = ','
+                if( bestOfst + bestCnt -1 > lastRead ):
+                    lastRead = bestOfst + bestCnt - 1
+                bestCnt = 0
+                break
+
+            /* If we reach this point, it means no match is found so far */
+            if( base+i+NHASH>=lenOut ):
+                /* We have reached the end of the file and have not found any
+                        ** matches.  Do an "insert" for everything that does not match */
+                putInt(lenOut-base, &zDelta)
+                *(zDelta++) = ':'
+                memcpy(zDelta, &zOut[base], lenOut-base)
+                zDelta += lenOut-base
+                base = lenOut
+                break
+
+            /* Advance the hash by one character.  Keep looking for a match */
+            hash_next(&h, zOut[base+i+NHASH])
+            i++
+    /* Output a final "insert" record to get all the text at the end of
+      ** the file that does not match anything in the source file.
+      */
+    if( base<lenOut ):
+        putInt(lenOut-base, &zDelta)
+        *(zDelta++) = ':'
+        memcpy(zDelta, &zOut[base], lenOut-base)
+        zDelta += lenOut-base
+    /* Output the final checksum record. */
+    putInt(checksum(zOut, lenOut), &zDelta)
+    *(zDelta++) = ';'
+    sqlite3_free(collide)
+    return zDelta - zOrigDelta
 
 /*
 ** Return the size (in bytes) of the output from applying
@@ -530,16 +499,13 @@ static int delta_create(
 ** for the output and hence allocate no more space than is really
 ** needed.
 */
-static sqlite3_int64 delta_output_size(const char *zDelta, int lenDelta){
-  sqlite3_int64 size;
-  size = deltaGetInt(&zDelta, &lenDelta);
-  if( lenDelta<=0 || *zDelta!='\n' ){
-    /* ERROR: size integer not terminated by "\n" */
-    return -1;
-  }
-  return size;
-}
-
+static sqlite3_int64 delta_output_size(const char *zDelta, int lenDelta):
+    sqlite3_int64 size
+    size = deltaGetInt(&zDelta, &lenDelta)
+    if( lenDelta<=0 || *zDelta!='\n' ):
+        /* ERROR: size integer not terminated by "\n" */
+        return -1
+    return size
 
 /*
 ** Apply a delta.
@@ -567,86 +533,85 @@ static int delta_apply(
   const char *zDelta,    /* Delta to apply to the pattern */
   int lenDelta,          /* Length of the delta */
   char *zOut             /* Write the output into this preallocated buffer */
-){
-  sqlite3_uint64 limit;
-  sqlite3_uint64 total = 0;
-#ifdef FOSSIL_ENABLE_DELTA_CKSUM_TEST
-  char *zOrigOut = zOut;
-#endif
+):
+    sqlite3_uint64 limit
+    sqlite3_uint64 total = 0
+    #ifdef FOSSIL_ENABLE_DELTA_CKSUM_TEST
+    char *zOrigOut = zOut
+    #endif
 
-  limit = deltaGetInt(&zDelta, &lenDelta);
-  if( lenDelta<=0 || *zDelta!='\n' ){
-    /* ERROR: size integer not terminated by "\n" */
-    return -1;
-  }
-  zDelta++; lenDelta--; /* Skip the \n */
-  while( lenDelta>0 && zDelta[0] ){
-    unsigned int cnt, ofst;
-    cnt = deltaGetInt(&zDelta, &lenDelta);
-    if( lenDelta<=0 ) return -1;
-    switch( zDelta[0] ){
-      case '@': {
-        zDelta++; lenDelta--;
-        ofst = deltaGetInt(&zDelta, &lenDelta);
-        if( lenDelta>0 && zDelta[0]!=',' ){
-          /* ERROR: copy command not terminated by ',' */
-          return -1;
-        }
-        zDelta++; lenDelta--;
-        total += cnt;
-        if( total>limit ){
-          /* ERROR: copy exceeds output file size */
-          return -1;
-        }
-        if( (u64)ofst+(u64)cnt > (u64)lenSrc ){
-          /* ERROR: copy extends past end of input */
-          return -1;
-        }
-        memcpy(zOut, &zSrc[ofst], cnt);
-        zOut += cnt;
-        break;
-      }
-      case ':': {
-        zDelta++; lenDelta--;
-        total += cnt;
-        if( total>limit ){
-          /* ERROR:  insert command gives an output larger than predicted */
-          return -1;
-        }
-        if( cnt>lenDelta ){
-          /* ERROR: insert count exceeds size of delta */
-          return -1;
-        }
-        memcpy(zOut, zDelta, cnt);
-        zOut += cnt;
-        zDelta += cnt;
-        lenDelta -= cnt;
-        break;
-      }
-      case ';': {
-        zDelta++; lenDelta--;
-        zOut[0] = 0;
-#ifdef FOSSIL_ENABLE_DELTA_CKSUM_TEST
-        if( cnt!=checksum(zOrigOut, total) ){
-          /* ERROR:  bad checksum */
-          return -1;
-        }
-#endif
-        if( total!=limit ){
-          /* ERROR: generated size does not match predicted size */
-          return -1;
-        }
-        return total;
-      }
-      default: {
-        /* ERROR: unknown delta operator */
-        return -1;
-      }
-    }
-  }
-  /* ERROR: unterminated delta */
-  return -1;
-}
+    limit = deltaGetInt(&zDelta, &lenDelta)
+    if( lenDelta<=0 || *zDelta!='\n' ):
+        /* ERROR: size integer not terminated by "\n" */
+        return -1
+    zDelta++
+    lenDelta-- /* Skip the \n */
+    while( lenDelta>0 && zDelta[0] ):
+        unsigned int cnt, ofst
+        cnt = deltaGetInt(&zDelta, &lenDelta)
+        if( lenDelta<=0 ):
+            return -1
+        switch( zDelta[0] ):
+            case '@':
+                {
+                    zDelta++
+                    lenDelta--
+                    ofst = deltaGetInt(&zDelta, &lenDelta)
+                    if( lenDelta>0 && zDelta[0]!=',' ):
+                        /* ERROR: copy command not terminated by ',' */
+                        return -1
+                    zDelta++
+                    lenDelta--
+                    total += cnt
+                    if( total>limit ):
+                        /* ERROR: copy exceeds output file size */
+                        return -1
+                    if( (u64)ofst+(u64)cnt > (u64)lenSrc ):
+                        /* ERROR: copy extends past end of input */
+                        return -1
+                    memcpy(zOut, &zSrc[ofst], cnt)
+                    zOut += cnt
+                    break
+                }
+            case ':':
+                {
+                    zDelta++
+                    lenDelta--
+                    total += cnt
+                    if( total>limit ):
+                        /* ERROR:  insert command gives an output larger than predicted */
+                        return -1
+                    if( cnt>lenDelta ):
+                        /* ERROR: insert count exceeds size of delta */
+                        return -1
+                    memcpy(zOut, zDelta, cnt)
+                    zOut += cnt
+                    zDelta += cnt
+                    lenDelta -= cnt
+                    break
+                }
+            case ';':
+                {
+                    zDelta++
+                    lenDelta--
+                    zOut[0] = 0
+                    #ifdef FOSSIL_ENABLE_DELTA_CKSUM_TEST
+                    if( cnt!=checksum(zOrigOut, total) ):
+                        /* ERROR:  bad checksum */
+                        return -1
+                    #endif
+                    if( total!=limit ):
+                        /* ERROR: generated size does not match predicted size */
+                        return -1
+                    return total
+                }
+            default:
+                {
+                    /* ERROR: unknown delta operator */
+                    return -1
+                }
+    /* ERROR: unterminated delta */
+    return -1
 
 /*
 ** SQL functions:  delta_create(X,Y)
@@ -657,31 +622,33 @@ static void deltaCreateFunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  const char *aOrig; int nOrig;  /* old blob */
-  const char *aNew;  int nNew;   /* new blob */
-  char *aOut;        int nOut;   /* output delta */
+):
+    const char *aOrig
+    int nOrig /* old blob */
+    const char *aNew
+    int nNew /* new blob */
+    char *aOut
+    int nOut /* output delta */
 
-  assert( argc==2 );
-  if( sqlite3_value_type(argv[0])==SQLITE_NULL ) return;
-  if( sqlite3_value_type(argv[1])==SQLITE_NULL ) return;
-  nOrig = sqlite3_value_bytes(argv[0]);
-  aOrig = (const char*)sqlite3_value_blob(argv[0]);
-  nNew = sqlite3_value_bytes(argv[1]);
-  aNew = (const char*)sqlite3_value_blob(argv[1]);
-  aOut = sqlite3_malloc64(nNew+70);
-  if( aOut==0 ){
-    sqlite3_result_error_nomem(context);
-  }else{
-    nOut = delta_create(aOrig, nOrig, aNew, nNew, aOut);
-    if( nOut<0 ){
-      sqlite3_free(aOut);
-      sqlite3_result_error(context, "cannot create fossil delta", -1);
-    }else{
-      sqlite3_result_blob(context, aOut, nOut, sqlite3_free);
-    }
-  }
-}
+    assert( argc==2 )
+    if( sqlite3_value_type(argv[0])==SQLITE_NULL ):
+        return
+    if( sqlite3_value_type(argv[1])==SQLITE_NULL ):
+        return
+    nOrig = sqlite3_value_bytes(argv[0])
+    aOrig = (const char*)sqlite3_value_blob(argv[0])
+    nNew = sqlite3_value_bytes(argv[1])
+    aNew = (const char*)sqlite3_value_blob(argv[1])
+    aOut = sqlite3_malloc64(nNew+70)
+    if( aOut==0 ):
+        sqlite3_result_error_nomem(context)
+    else:
+        nOut = delta_create(aOrig, nOrig, aNew, nNew, aOut)
+        if( nOut<0 ):
+            sqlite3_free(aOut)
+            sqlite3_result_error(context, "cannot create fossil delta", -1)
+        else:
+            sqlite3_result_blob(context, aOut, nOut, sqlite3_free)
 
 /*
 ** SQL functions:  delta_apply(X,D)
@@ -692,43 +659,42 @@ static void deltaApplyFunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  const char *aOrig;   int nOrig;          /* The X input */
-  const char *aDelta;  int nDelta;         /* The input delta (D) */
-  char *aOut;          sqlite3_int64 nOut; /* The output */
+):
+    const char *aOrig
+    int nOrig /* The X input */
+    const char *aDelta
+    int nDelta /* The input delta (D) */
+    char *aOut
+    sqlite3_int64 nOut /* The output */
 
-  assert( argc==2 );
-  if( sqlite3_value_type(argv[0])==SQLITE_NULL ) return;
-  if( sqlite3_value_type(argv[1])==SQLITE_NULL ) return;
-  nOrig = sqlite3_value_bytes(argv[0]);
-  aOrig = (const char*)sqlite3_value_blob(argv[0]);
-  nDelta = sqlite3_value_bytes(argv[1]);
-  aDelta = (const char*)sqlite3_value_blob(argv[1]);
+    assert( argc==2 )
+    if( sqlite3_value_type(argv[0])==SQLITE_NULL ):
+        return
+    if( sqlite3_value_type(argv[1])==SQLITE_NULL ):
+        return
+    nOrig = sqlite3_value_bytes(argv[0])
+    aOrig = (const char*)sqlite3_value_blob(argv[0])
+    nDelta = sqlite3_value_bytes(argv[1])
+    aDelta = (const char*)sqlite3_value_blob(argv[1])
 
-  /* Figure out the size of the output */
-  nOut = delta_output_size(aDelta, nDelta);
-  if( nOut<0 ){
-    sqlite3_result_error(context, "corrupt fossil delta", -1);
-    return;
-  }
-  if( nOut > 0x7fffffff ){
-    sqlite3_result_error_toobig(context);
-    return;
-  }
-  aOut = sqlite3_malloc64(nOut+1);
-  if( aOut==0 ){
-    sqlite3_result_error_nomem(context);
-  }else{
-    const int nOut2 = delta_apply(aOrig, nOrig, aDelta, nDelta, aOut);
-    if( nOut2!=nOut ){
-      sqlite3_free(aOut);
-      sqlite3_result_error(context, "corrupt fossil delta", -1);
-    }else{
-      sqlite3_result_blob(context, aOut, nOut, sqlite3_free);
-    }
-  }
-}
-
+    /* Figure out the size of the output */
+    nOut = delta_output_size(aDelta, nDelta)
+    if( nOut<0 ):
+        sqlite3_result_error(context, "corrupt fossil delta", -1)
+        return
+    if( nOut > 0x7fffffff ):
+        sqlite3_result_error_toobig(context)
+        return
+    aOut = sqlite3_malloc64(nOut+1)
+    if( aOut==0 ):
+        sqlite3_result_error_nomem(context)
+    else:
+        const int nOut2 = delta_apply(aOrig, nOrig, aDelta, nDelta, aOut)
+        if( nOut2!=nOut ):
+            sqlite3_free(aOut)
+            sqlite3_result_error(context, "corrupt fossil delta", -1)
+        else:
+            sqlite3_result_blob(context, aOut, nOut, sqlite3_free)
 
 /*
 ** SQL functions:  delta_output_size(D)
@@ -739,23 +705,23 @@ static void deltaOutputSizeFunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  const char *aDelta;  int nDelta;       /* The input delta (D) */
-  sqlite3_int64 nOut;                    /* Size of output */
-  assert( argc==1 );
-  if( sqlite3_value_type(argv[0])==SQLITE_NULL ) return;
-  nDelta = sqlite3_value_bytes(argv[0]);
-  aDelta = (const char*)sqlite3_value_blob(argv[0]);
+):
+    const char *aDelta
+    int nDelta /* The input delta (D) */
+    sqlite3_int64 nOut /* Size of output */
+    assert( argc==1 )
+    if( sqlite3_value_type(argv[0])==SQLITE_NULL ):
+        return
+    nDelta = sqlite3_value_bytes(argv[0])
+    aDelta = (const char*)sqlite3_value_blob(argv[0])
 
-  /* Figure out the size of the output */
-  nOut = delta_output_size(aDelta, nDelta);
-  if( nOut<0 ){
-    sqlite3_result_error(context, "corrupt fossil delta", -1);
-    return;
-  }else{
-    sqlite3_result_int64(context, nOut);
-  }
-}
+    /* Figure out the size of the output */
+    nOut = delta_output_size(aDelta, nDelta)
+    if( nOut<0 ):
+        sqlite3_result_error(context, "corrupt fossil delta", -1)
+        return
+    else:
+        sqlite3_result_int64(context, nOut)
 
 /*****************************************************************************
 ** Table-valued SQL function:   delta_parse(DELTA)
@@ -790,27 +756,25 @@ static void deltaOutputSizeFunc(
 ** of 'ERROR' is returned.  The a1 value of the ERROR row is the offset
 ** into the delta where the error was encountered and a2 is NULL.
 */
-typedef struct deltaparsevtab_vtab deltaparsevtab_vtab;
-typedef struct deltaparsevtab_cursor deltaparsevtab_cursor;
-struct deltaparsevtab_vtab {
-  sqlite3_vtab base;  /* Base class - must be first */
-  /* No additional information needed */
-};
-struct deltaparsevtab_cursor {
-  sqlite3_vtab_cursor base;  /* Base class - must be first */
-  char *aDelta;              /* The delta being parsed */
-  i64 iCursor;               /* Current cursor location */
-  i64 iNext;                 /* Next cursor value */
-  i64 nDelta;                /* Number of bytes in the delta */
-  int eOp;                   /* Name of current operator */
-  unsigned int a1, a2;       /* Arguments to current operator */
-};
+typedef struct deltaparsevtab_vtab deltaparsevtab_vtab
+typedef struct deltaparsevtab_cursor deltaparsevtab_cursor
+struct deltaparsevtab_vtab:
+    sqlite3_vtab base /* Base class - must be first */
+    /* No additional information needed */
+struct deltaparsevtab_cursor:
+    sqlite3_vtab_cursor base /* Base class - must be first */
+    char *aDelta /* The delta being parsed */
+    i64 iCursor /* Current cursor location */
+    i64 iNext /* Next cursor value */
+    i64 nDelta /* Number of bytes in the delta */
+    int eOp /* Name of current operator */
+    unsigned int a1, a2 /* Arguments to current operator */
 
 /* Operator names:
 */
 static const char *azOp[] = {
   "SIZE", "COPY", "INSERT", "CHECKSUM", "ERROR", "EOF"
-};
+}
 #define DELTAPARSE_OP_SIZE         0
 #define DELTAPARSE_OP_COPY         1
 #define DELTAPARSE_OP_INSERT       2
@@ -837,120 +801,115 @@ static int deltaparsevtabConnect(
   int argc, const char *const*argv,
   sqlite3_vtab **ppVtab,
   char **pzErr
-){
-  deltaparsevtab_vtab *pNew;
-  int rc;
+):
+    deltaparsevtab_vtab *pNew
+    int rc
 
-  rc = sqlite3_declare_vtab(db,
+    rc = sqlite3_declare_vtab(db,
            "CREATE TABLE x(op,a1,a2,delta HIDDEN)"
-       );
-  /* For convenience, define symbolic names for the index to each column. */
-#define DELTAPARSEVTAB_OP     0
-#define DELTAPARSEVTAB_A1     1
-#define DELTAPARSEVTAB_A2     2
-#define DELTAPARSEVTAB_DELTA  3
-  if( rc==SQLITE_OK ){
-    pNew = sqlite3_malloc64( sizeof(*pNew) );
-    *ppVtab = (sqlite3_vtab*)pNew;
-    if( pNew==0 ) return SQLITE_NOMEM;
-    memset(pNew, 0, sizeof(*pNew));
-    sqlite3_vtab_config(db, SQLITE_VTAB_INNOCUOUS);
-  }
-  return rc;
-}
+       )
+    /* For convenience, define symbolic names for the index to each column. */
+    #define DELTAPARSEVTAB_OP     0
+    #define DELTAPARSEVTAB_A1     1
+    #define DELTAPARSEVTAB_A2     2
+    #define DELTAPARSEVTAB_DELTA  3
+    if( rc==SQLITE_OK ):
+        pNew = sqlite3_malloc64( sizeof(*pNew) )
+        *ppVtab = (sqlite3_vtab*)pNew
+        if( pNew==0 ):
+            return SQLITE_NOMEM
+        memset(pNew, 0, sizeof(*pNew))
+        sqlite3_vtab_config(db, SQLITE_VTAB_INNOCUOUS)
+    return rc
 
 /*
 ** This method is the destructor for deltaparsevtab_vtab objects.
 */
-static int deltaparsevtabDisconnect(sqlite3_vtab *pVtab){
-  deltaparsevtab_vtab *p = (deltaparsevtab_vtab*)pVtab;
-  sqlite3_free(p);
-  return SQLITE_OK;
-}
+static int deltaparsevtabDisconnect(sqlite3_vtab *pVtab):
+    deltaparsevtab_vtab *p = (deltaparsevtab_vtab*)pVtab
+    sqlite3_free(p)
+    return SQLITE_OK
 
 /*
 ** Constructor for a new deltaparsevtab_cursor object.
 */
-static int deltaparsevtabOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
-  deltaparsevtab_cursor *pCur;
-  pCur = sqlite3_malloc64( sizeof(*pCur) );
-  if( pCur==0 ) return SQLITE_NOMEM;
-  memset(pCur, 0, sizeof(*pCur));
-  *ppCursor = &pCur->base;
-  return SQLITE_OK;
-}
+static int deltaparsevtabOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor):
+    deltaparsevtab_cursor *pCur
+    pCur = sqlite3_malloc64( sizeof(*pCur) )
+    if( pCur==0 ):
+        return SQLITE_NOMEM
+    memset(pCur, 0, sizeof(*pCur))
+    *ppCursor = &pCur->base
+    return SQLITE_OK
 
 /*
 ** Destructor for a deltaparsevtab_cursor.
 */
-static int deltaparsevtabClose(sqlite3_vtab_cursor *cur){
-  deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor*)cur;
-  sqlite3_free(pCur->aDelta);
-  sqlite3_free(pCur);
-  return SQLITE_OK;
-}
+static int deltaparsevtabClose(sqlite3_vtab_cursor *cur):
+    deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor*)cur
+    sqlite3_free(pCur->aDelta)
+    sqlite3_free(pCur)
+    return SQLITE_OK
 
 /*
 ** Compute the difference (in bytes) between two pointers.
 */
 #define PTR_DIFF(A,B)  ((i64)(intptr_t)(A) - (i64)(intptr_t)(B))
 
-
 /*
 ** Advance a deltaparsevtab_cursor to its next row of output.
 */
-static int deltaparsevtabNext(sqlite3_vtab_cursor *cur){
-  deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor*)cur;
-  const char *z;
-  int i = 0;
+static int deltaparsevtabNext(sqlite3_vtab_cursor *cur):
+    deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor*)cur
+    const char *z
+    int i = 0
 
-  pCur->iCursor = pCur->iNext;
-  if( pCur->iCursor >= pCur->nDelta ){
-    pCur->eOp = DELTAPARSE_OP_ERROR;
-    pCur->iNext = pCur->nDelta;
-    return SQLITE_OK;
-  }
-  z = pCur->aDelta + pCur->iCursor;
-  i = pCur->nDelta - pCur->iCursor;
-  pCur->a1 = deltaGetInt(&z, &i);
-  switch( i>0 ? z[0] : 0 ){
-    case '@': {
-      z++;
-      i--;
-      if( pCur->iNext>=pCur->nDelta ){
-        pCur->eOp = DELTAPARSE_OP_ERROR;
-        pCur->iNext = pCur->nDelta;
-        break;
-      }
-      pCur->a2 = deltaGetInt(&z, &i);
-      pCur->eOp = DELTAPARSE_OP_COPY;
-      pCur->iNext = PTR_DIFF(&z[1],pCur->aDelta);
-      break;
-    }
-    case ':': {
-      z++;
-      pCur->a2 = (unsigned int)(z - pCur->aDelta);
-      pCur->eOp = DELTAPARSE_OP_INSERT;
-      pCur->iNext = PTR_DIFF(&z[pCur->a1],pCur->aDelta);
-      break;
-    }
-    case ';': {
-      pCur->eOp = DELTAPARSE_OP_CHECKSUM;
-      pCur->iNext = pCur->nDelta;
-      break;
-    }
-    default: {
-      if( pCur->iNext==pCur->nDelta ){
-        pCur->eOp = DELTAPARSE_OP_EOF;
-      }else{
-        pCur->eOp = DELTAPARSE_OP_ERROR;
-        pCur->iNext = pCur->nDelta;
-      }
-      break;
-    }
-  }
-  return SQLITE_OK;
-}
+    pCur->iCursor = pCur->iNext
+    if( pCur->iCursor >= pCur->nDelta ):
+        pCur->eOp = DELTAPARSE_OP_ERROR
+        pCur->iNext = pCur->nDelta
+        return SQLITE_OK
+    z = pCur->aDelta + pCur->iCursor
+    i = pCur->nDelta - pCur->iCursor
+    pCur->a1 = deltaGetInt(&z, &i)
+    switch( i>0 ? z[0] : 0 ):
+        case '@':
+            {
+                z++
+                i--
+                if( pCur->iNext>=pCur->nDelta ):
+                    pCur->eOp = DELTAPARSE_OP_ERROR
+                    pCur->iNext = pCur->nDelta
+                    break
+                pCur->a2 = deltaGetInt(&z, &i)
+                pCur->eOp = DELTAPARSE_OP_COPY
+                pCur->iNext = PTR_DIFF(&z[1],pCur->aDelta)
+                break
+            }
+        case ':':
+            {
+                z++
+                pCur->a2 = (unsigned int)(z - pCur->aDelta)
+                pCur->eOp = DELTAPARSE_OP_INSERT
+                pCur->iNext = PTR_DIFF(&z[pCur->a1],pCur->aDelta)
+                break
+            }
+        case ';':
+            {
+                pCur->eOp = DELTAPARSE_OP_CHECKSUM
+                pCur->iNext = pCur->nDelta
+                break
+            }
+        default:
+            {
+                if( pCur->iNext==pCur->nDelta ):
+                    pCur->eOp = DELTAPARSE_OP_EOF
+                else:
+                    pCur->eOp = DELTAPARSE_OP_ERROR
+                    pCur->iNext = pCur->nDelta
+                break
+            }
+    return SQLITE_OK
 
 /*
 ** Return values of columns for the row at which the deltaparsevtab_cursor
@@ -960,56 +919,54 @@ static int deltaparsevtabColumn(
   sqlite3_vtab_cursor *cur,   /* The cursor */
   sqlite3_context *ctx,       /* First argument to sqlite3_result_...() */
   int i                       /* Which column to return */
-){
-  deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor*)cur;
-  switch( i ){
-    case DELTAPARSEVTAB_OP: {
-      sqlite3_result_text(ctx, azOp[pCur->eOp], -1, SQLITE_STATIC);
-      break;
-    }
-    case DELTAPARSEVTAB_A1: {
-      sqlite3_result_int64(ctx, pCur->a1);
-      break;
-    }
-    case DELTAPARSEVTAB_A2: {
-      if( pCur->eOp==DELTAPARSE_OP_COPY ){
-        sqlite3_result_int64(ctx, pCur->a2);
-      }else if( pCur->eOp==DELTAPARSE_OP_INSERT ){
-        if( (i64)pCur->a2 + (i64)pCur->a1 > pCur->nDelta ){
-          sqlite3_result_zeroblob(ctx, pCur->a1);
-        }else{
-          sqlite3_result_blob(ctx, pCur->aDelta+pCur->a2, pCur->a1,
-                              SQLITE_TRANSIENT);
-        }
-      }
-      break;
-    }
-    case DELTAPARSEVTAB_DELTA: {
-      sqlite3_result_blob(ctx, pCur->aDelta, pCur->nDelta, SQLITE_TRANSIENT);
-      break;
-    }
-  }
-  return SQLITE_OK;
-}
+):
+    deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor*)cur
+    switch( i ):
+        case DELTAPARSEVTAB_OP:
+            {
+                sqlite3_result_text(ctx, azOp[pCur->eOp], -1, SQLITE_STATIC)
+                break
+            }
+        case DELTAPARSEVTAB_A1:
+            {
+                sqlite3_result_int64(ctx, pCur->a1)
+                break
+            }
+        case DELTAPARSEVTAB_A2:
+            {
+                if( pCur->eOp==DELTAPARSE_OP_COPY ):
+                    sqlite3_result_int64(ctx, pCur->a2)
+                else if( pCur->eOp==DELTAPARSE_OP_INSERT ):
+                    if( (i64)pCur->a2 + (i64)pCur->a1 > pCur->nDelta ):
+                        sqlite3_result_zeroblob(ctx, pCur->a1)
+                    else:
+                        sqlite3_result_blob(ctx, pCur->aDelta+pCur->a2, pCur->a1,
+                              SQLITE_TRANSIENT)
+                break
+            }
+        case DELTAPARSEVTAB_DELTA:
+            {
+                sqlite3_result_blob(ctx, pCur->aDelta, pCur->nDelta, SQLITE_TRANSIENT)
+                break
+            }
+    return SQLITE_OK
 
 /*
 ** Return the rowid for the current row.  In this implementation, the
 ** rowid is the same as the output value.
 */
-static int deltaparsevtabRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
-  deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor*)cur;
-  *pRowid = pCur->iCursor;
-  return SQLITE_OK;
-}
+static int deltaparsevtabRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid):
+    deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor*)cur
+    *pRowid = pCur->iCursor
+    return SQLITE_OK
 
 /*
 ** Return TRUE if the cursor has been moved off of the last
 ** row of output.
 */
-static int deltaparsevtabEof(sqlite3_vtab_cursor *cur){
-  deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor*)cur;
-  return pCur->eOp==DELTAPARSE_OP_EOF || pCur->iCursor>=pCur->nDelta;
-}
+static int deltaparsevtabEof(sqlite3_vtab_cursor *cur):
+    deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor*)cur
+    return pCur->eOp==DELTAPARSE_OP_EOF || pCur->iCursor>=pCur->nDelta
 
 /*
 ** This method is called to "rewind" the deltaparsevtab_cursor object back
@@ -1021,41 +978,36 @@ static int deltaparsevtabFilter(
   sqlite3_vtab_cursor *pVtabCursor,
   int idxNum, const char *idxStr,
   int argc, sqlite3_value **argv
-){
-  deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor *)pVtabCursor;
-  const char *a;
-  int i = 0;
-  pCur->eOp = DELTAPARSE_OP_ERROR;
-  if( idxNum!=1 ){
-    return SQLITE_OK;
-  }
-  pCur->nDelta = sqlite3_value_bytes(argv[0]);
-  a = (const char*)sqlite3_value_blob(argv[0]);
-  if( pCur->nDelta==0 || a==0 ){
-    return SQLITE_OK;
-  }
-  sqlite3_free(pCur->aDelta);
-  pCur->aDelta = sqlite3_malloc64(pCur->nDelta+1);
-  if( pCur->aDelta==0 ){
-    pCur->nDelta = 0;
-    return SQLITE_NOMEM;
-  }
-  memcpy(pCur->aDelta, a, pCur->nDelta);
-  pCur->aDelta[pCur->nDelta] = 0;
-  a = pCur->aDelta;
-  i = pCur->nDelta;
-  pCur->eOp = DELTAPARSE_OP_SIZE;
-  pCur->a1 = deltaGetInt(&a, &i);
-  if( i<=0 || a[0]!='\n' ){
-    pCur->eOp = DELTAPARSE_OP_ERROR;
-    pCur->a1 = pCur->a2 = 0;
-    pCur->iNext = pCur->nDelta;
-    return SQLITE_OK;
-  }
-  a++;
-  pCur->iNext =  PTR_DIFF(a,pCur->aDelta);
-  return SQLITE_OK;
-}
+):
+    deltaparsevtab_cursor *pCur = (deltaparsevtab_cursor *)pVtabCursor
+    const char *a
+    int i = 0
+    pCur->eOp = DELTAPARSE_OP_ERROR
+    if( idxNum!=1 ):
+        return SQLITE_OK
+    pCur->nDelta = sqlite3_value_bytes(argv[0])
+    a = (const char*)sqlite3_value_blob(argv[0])
+    if( pCur->nDelta==0 || a==0 ):
+        return SQLITE_OK
+    sqlite3_free(pCur->aDelta)
+    pCur->aDelta = sqlite3_malloc64(pCur->nDelta+1)
+    if( pCur->aDelta==0 ):
+        pCur->nDelta = 0
+        return SQLITE_NOMEM
+    memcpy(pCur->aDelta, a, pCur->nDelta)
+    pCur->aDelta[pCur->nDelta] = 0
+    a = pCur->aDelta
+    i = pCur->nDelta
+    pCur->eOp = DELTAPARSE_OP_SIZE
+    pCur->a1 = deltaGetInt(&a, &i)
+    if( i<=0 || a[0]!='\n' ):
+        pCur->eOp = DELTAPARSE_OP_ERROR
+        pCur->a1 = pCur->a2 = 0
+        pCur->iNext = pCur->nDelta
+        return SQLITE_OK
+    a++
+    pCur->iNext =  PTR_DIFF(a,pCur->aDelta)
+    return SQLITE_OK
 
 /*
 ** SQLite will invoke this method one or more times while planning a query
@@ -1066,24 +1018,25 @@ static int deltaparsevtabFilter(
 static int deltaparsevtabBestIndex(
   sqlite3_vtab *tab,
   sqlite3_index_info *pIdxInfo
-){
-  int i;
-  for(i=0; i<pIdxInfo->nConstraint; i++){
-    if( pIdxInfo->aConstraint[i].iColumn != DELTAPARSEVTAB_DELTA ) continue;
-    if( pIdxInfo->aConstraint[i].usable==0 ) continue;
-    if( pIdxInfo->aConstraint[i].op!=SQLITE_INDEX_CONSTRAINT_EQ ) continue;
-    pIdxInfo->aConstraintUsage[i].argvIndex = 1;
-    pIdxInfo->aConstraintUsage[i].omit = 1;
-    pIdxInfo->estimatedCost = (double)1;
-    pIdxInfo->estimatedRows = 10;
-    pIdxInfo->idxNum = 1;
-    return SQLITE_OK;
-  }
-  pIdxInfo->idxNum = 0;
-  pIdxInfo->estimatedCost = (double)0x7fffffff;
-  pIdxInfo->estimatedRows = 0x7fffffff;
-  return SQLITE_CONSTRAINT;
-}
+):
+    int i
+    for(i=0; i<pIdxInfo->nConstraint; i++):
+        if( pIdxInfo->aConstraint[i].iColumn != DELTAPARSEVTAB_DELTA ):
+            continue
+        if( pIdxInfo->aConstraint[i].usable==0 ):
+            continue
+        if( pIdxInfo->aConstraint[i].op!=SQLITE_INDEX_CONSTRAINT_EQ ):
+            continue
+        pIdxInfo->aConstraintUsage[i].argvIndex = 1
+        pIdxInfo->aConstraintUsage[i].omit = 1
+        pIdxInfo->estimatedCost = (double)1
+        pIdxInfo->estimatedRows = 10
+        pIdxInfo->idxNum = 1
+        return SQLITE_OK
+    pIdxInfo->idxNum = 0
+    pIdxInfo->estimatedCost = (double)0x7fffffff
+    pIdxInfo->estimatedRows = 0x7fffffff
+    return SQLITE_CONSTRAINT
 
 /*
 ** This following structure defines all the methods for the
@@ -1115,9 +1068,7 @@ static sqlite3_module deltaparsevtabModule = {
   /* xRollbackTo */ 0,
   /* xShadowName */ 0,
   /* xIntegrity  */ 0
-};
-
-
+}
 
 #ifdef _WIN32
 __declspec(dllexport)
@@ -1126,23 +1077,19 @@ int sqlite3_fossildelta_init(
   sqlite3 *db,
   char **pzErrMsg,
   const sqlite3_api_routines *pApi
-){
-  static const int enc = SQLITE_UTF8|SQLITE_INNOCUOUS;
-  int rc = SQLITE_OK;
-  SQLITE_EXTENSION_INIT2(pApi);
-  (void)pzErrMsg;  /* Unused parameter */
-  rc = sqlite3_create_function(db, "delta_create", 2, enc, 0,
-                               deltaCreateFunc, 0, 0);
-  if( rc==SQLITE_OK ){
-    rc = sqlite3_create_function(db, "delta_apply", 2, enc, 0,
-                                 deltaApplyFunc, 0, 0);
-  }
-  if( rc==SQLITE_OK ){
-    rc = sqlite3_create_function(db, "delta_output_size", 1, enc, 0,
-                                 deltaOutputSizeFunc, 0, 0);
-  }
-  if( rc==SQLITE_OK ){
-    rc = sqlite3_create_module(db, "delta_parse", &deltaparsevtabModule, 0);
-  }
-  return rc;
-}
+):
+    static const int enc = SQLITE_UTF8|SQLITE_INNOCUOUS
+    int rc = SQLITE_OK
+    SQLITE_EXTENSION_INIT2(pApi)
+    (void)pzErrMsg /* Unused parameter */
+    rc = sqlite3_create_function(db, "delta_create", 2, enc, 0,
+                               deltaCreateFunc, 0, 0)
+    if( rc==SQLITE_OK ):
+        rc = sqlite3_create_function(db, "delta_apply", 2, enc, 0,
+                                 deltaApplyFunc, 0, 0)
+    if( rc==SQLITE_OK ):
+        rc = sqlite3_create_function(db, "delta_output_size", 1, enc, 0,
+                                 deltaOutputSizeFunc, 0, 0)
+    if( rc==SQLITE_OK ):
+        rc = sqlite3_create_module(db, "delta_parse", &deltaparsevtabModule, 0)
+    return rc

@@ -100,56 +100,52 @@
 /*
 ** Process ID of the parent
 */
-static pid_t parentPid = 0;
+static pid_t parentPid = 0
 
 /*
 ** Return either "parent" or "child", as appropriate.
 */
-static const char *whoAmI(void){
-  return getpid()==parentPid ? "parent" : "child";
-}
+static const char *whoAmI(void):
+    return getpid()==parentPid ? "parent" : "child"
 
 /*
 ** This is an sqlite3_exec() callback routine that prints all results.
 */
-static int execCallback(void *pNotUsed, int nCol, char **aVal, char **aCol){
-  int i;
-  const char *zWho = whoAmI();
-  for(i=0; i<nCol; i++){
-    const char *zVal = aVal[i];
-    const char *zCol = aCol[i];
-    if( zVal==0 ) zVal = "NULL";
-    if( zCol==0 ) zCol = "NULL";
-    printf("%s: %s = %s\n", zWho, zCol, zVal);
-    fflush(stdout);
-  }
-  return 0;
-}
+static int execCallback(void *pNotUsed, int nCol, char **aVal, char **aCol):
+    int i
+    const char *zWho = whoAmI()
+    for(i=0; i<nCol; i++):
+        const char *zVal = aVal[i]
+        const char *zCol = aCol[i]
+        if( zVal==0 ):
+            zVal = "NULL"
+        if( zCol==0 ):
+            zCol = "NULL"
+        printf("%s: %s = %s\n", zWho, zCol, zVal)
+        fflush(stdout)
+    return 0
 
 /*
 ** Execute one or more SQL statements.
 */
-static void sqlExec(sqlite3 *db, const char *zSql, int bCallback){
-  int rc;
-  char *zErr = 0;
-  printf("%s: %s\n", whoAmI(), zSql);
-  fflush(stdout);
-  rc = sqlite3_exec(db, zSql, bCallback ? execCallback : 0, 0, &zErr);
-  if( rc || zErr!=0 ){
-    printf("%s: %s: rc=%d: %s\n", 
-      whoAmI(), zSql, rc, zErr);
-    exit(1);
-  }
-}
+static void sqlExec(sqlite3 *db, const char *zSql, int bCallback):
+    int rc
+    char *zErr = 0
+    printf("%s: %s\n", whoAmI(), zSql)
+    fflush(stdout)
+    rc = sqlite3_exec(db, zSql, bCallback ? execCallback : 0, 0, &zErr)
+    if( rc || zErr!=0 ):
+        printf("%s: %s: rc=%d: %s\n",
+        whoAmI(), zSql, rc, zErr)
+        exit(1)
 
 /*
 ** Trace callback for the vfstrace extension.
 */
-static int vfsTraceCallback(const char *zMsg, void *pNotUsed){
-  printf("%s: %s", whoAmI(), zMsg);
-  fflush(stdout);
-  return 0;
-}
+static int vfsTraceCallback(const char *zMsg, void *pNotUsed):
+    printf("%s: %s", whoAmI(), zMsg)
+    fflush(stdout)
+    return 0
 
 /* External VFS module provided by ext/misc/vfstrace.c
 */
@@ -159,152 +155,143 @@ extern int vfstrace_register(
   int (*xOut)(const char*,void*), // Output routine.  ex: fputs
   void *pOutArg,                  // 2nd argument to xOut.  ex: stderr
   int makeDefault                 // Make the new VFS the default
-);
+    )
 
+int main(int argc, char **argv):
+    sqlite3 *db
+    int rc
+    int i
+    int useWal = 0
+    const char *zFilename = 0
+    pid_t child = 0, c2
+    int status
+    int bCommitBeforeFork = 0
+    int nDelayAfter4 = 0
 
-int main(int argc, char **argv){
-  sqlite3 *db;
-  int rc;
-  int i;
-  int useWal = 0;
-  const char *zFilename = 0;
-  pid_t child = 0, c2;
-  int status;
-  int bCommitBeforeFork = 0;
-  int nDelayAfter4 = 0;
+    for(i=1; i<argc; i++):
+        const char *z = argv[i]
+        if( z[0]=='-' && z[1]=='-' && z[2]!=0 ):
+            z++
+        if( strcmp(z, "-wal")==0 ):
+            useWal = 1
+        else if( strcmp(z, "-commit-before-fork")==0 ):
+            bCommitBeforeFork = 1
+        else if( strcmp(z, "-delay-after-4")==0 && i+1<argc ):
+            i++
+            nDelayAfter4 = atoi(argv[i])
+        else if( strcmp(z, "-vfstrace")==0 ):
+            vfstrace_register("vfstrace", 0, vfsTraceCallback, 0, 1)
+        else if( z[0]=='-' ):
+            printf("unknown option: \"%s\"\n", argv[i])
+            exit(1)
+        else if( zFilename!=0 ):
+            printf("unknown argument: \"%s\"\n", argv[i])
+            exit(1)
+        else:
+            zFilename = argv[i]
+    if( zFilename==0 ):
+        printf("Usage: %s FILENAME\n", argv[0])
+        return 1
 
-  for(i=1; i<argc; i++){
-    const char *z = argv[i];
-    if( z[0]=='-' && z[1]=='-' && z[2]!=0 ) z++;
-    if( strcmp(z, "-wal")==0 ){
-      useWal = 1;
-    }else if( strcmp(z, "-commit-before-fork")==0 ){
-      bCommitBeforeFork = 1;
-    }else if( strcmp(z, "-delay-after-4")==0 && i+1<argc ){
-      i++;
-      nDelayAfter4 = atoi(argv[i]);
-    }else if( strcmp(z, "-vfstrace")==0 ){
-      vfstrace_register("vfstrace", 0, vfsTraceCallback, 0, 1);
-    }else if( z[0]=='-' ){
-      printf("unknown option: \"%s\"\n", argv[i]);
-      exit(1);
-    }else if( zFilename!=0 ){
-      printf("unknown argument: \"%s\"\n", argv[i]);
-      exit(1);
-    }else{
-      zFilename = argv[i];
-    }
-  }
-  if( zFilename==0 ){
-    printf("Usage: %s FILENAME\n", argv[0]);
-    return 1;
-  }
+    /**  Step 1 **/
+    printf("Step 1:\n")
+    parentPid = getpid()
+    unlink(zFilename)
+    rc = sqlite3_open(zFilename, &db)
+    if( rc ):
+        printf("sqlite3_open() returns %d\n", rc)
+        exit(1)
+    if( useWal ):
+        sqlExec(db, "PRAGMA journal_mode=WAL;", 0)
+    sqlExec(db, "CREATE TABLE t1(x);", 0)
+    sqlExec(db, "INSERT INTO t1 VALUES('First row');", 0)
+    sqlExec(db, "SELECT x FROM t1;", 1)
 
-  /**  Step 1 **/
-  printf("Step 1:\n");
-  parentPid = getpid();
-  unlink(zFilename);
-  rc = sqlite3_open(zFilename, &db);
-  if( rc ){
-    printf("sqlite3_open() returns %d\n", rc);
-    exit(1);
-  }
-  if( useWal ){
-    sqlExec(db, "PRAGMA journal_mode=WAL;", 0);
-  }
-  sqlExec(db, "CREATE TABLE t1(x);", 0);
-  sqlExec(db, "INSERT INTO t1 VALUES('First row');", 0);
-  sqlExec(db, "SELECT x FROM t1;", 1);
+    /**  Step 2 **/
+    printf("Step 2:\n")
+    sqlExec(db, "BEGIN IMMEDIATE;", 0)
+    sqlExec(db, "INSERT INTO t1 VALUES('Second row');", 0)
+    sqlExec(db, "SELECT x FROM t1;", 1)
+    if( bCommitBeforeFork ):
+        sqlExec(db, "COMMIT", 0)
 
-  /**  Step 2 **/
-  printf("Step 2:\n");
-  sqlExec(db, "BEGIN IMMEDIATE;", 0);
-  sqlExec(db, "INSERT INTO t1 VALUES('Second row');", 0);
-  sqlExec(db, "SELECT x FROM t1;", 1);
-  if( bCommitBeforeFork ) sqlExec(db, "COMMIT", 0);
+    /**  Step 3 **/
+    printf("Step 3:\n")
+    fflush(stdout)
+    child = fork()
+    if( child!=0 ):
+        printf("Parent = %d\nChild = %d\n", getpid(), child)
 
-  /**  Step 3 **/
-  printf("Step 3:\n"); fflush(stdout);
-  child = fork();
-  if( child!=0 ){
-    printf("Parent = %d\nChild = %d\n", getpid(), child);
-  }
+    /**  Step 4 **/
+    if( child==0 ):
+        int k
+        printf("Step 4:\n")
+        fflush(stdout)
 
-  /**  Step 4 **/
-  if( child==0 ){
-    int k;
-    printf("Step 4:\n"); fflush(stdout);
+        /***********************************************************************
+            ** The following block of code closes the database connection without
+            ** rolling back or changing any files on disk.  This is necessary to
+            ** preservce the pending transaction in the parent.
+            */
+        for(k=0; 1/*exit-by-break*/; k++):
+            const char *zDbName = sqlite3_db_name(db, k)
+            sqlite3_file *pJrnl = 0
+            if( k==1 ):
+                continue
+            if( zDbName==0 ):
+                break
+            sqlite3_file_control(db, zDbName, SQLITE_FCNTL_NULL_IO, 0)
+            sqlite3_file_control(db, zDbName, SQLITE_FCNTL_JOURNAL_POINTER, &pJrnl)
+            if( pJrnl && pJrnl->pMethods && pJrnl->pMethods->xFileControl ):
+                pJrnl->pMethods->xFileControl(pJrnl, SQLITE_FCNTL_NULL_IO, 0)
+        sqlite3_close(db)
+        /*
+            ** End of special close procedures for SQLite database connections
+            ** inherited via fork().
+            ***********************************************************************/
 
-    /***********************************************************************
-    ** The following block of code closes the database connection without
-    ** rolling back or changing any files on disk.  This is necessary to
-    ** preservce the pending transaction in the parent. 
-    */
-    for(k=0; 1/*exit-by-break*/; k++){
-      const char *zDbName = sqlite3_db_name(db, k);
-      sqlite3_file *pJrnl = 0;
-      if( k==1 ) continue;
-      if( zDbName==0 ) break;
-      sqlite3_file_control(db, zDbName, SQLITE_FCNTL_NULL_IO, 0);
-      sqlite3_file_control(db, zDbName, SQLITE_FCNTL_JOURNAL_POINTER, &pJrnl);
-      if( pJrnl && pJrnl->pMethods && pJrnl->pMethods->xFileControl ){
-        pJrnl->pMethods->xFileControl(pJrnl, SQLITE_FCNTL_NULL_IO, 0);
-      }
-    }    
-    sqlite3_close(db);
-    /*
-    ** End of special close procedures for SQLite database connections
-    ** inherited via fork().
-    ***********************************************************************/
+        printf("%s: database connection closed\n", whoAmI())
+        fflush(stdout)
+    else:
+        /* Pause the parent briefly to give the child a chance to close its
+            ** database connection */
+        sleep(1)
 
-    printf("%s: database connection closed\n", whoAmI()); fflush(stdout);
-  }else{
-    /* Pause the parent briefly to give the child a chance to close its
-    ** database connection */
-    sleep(1);
-  }
+    if( nDelayAfter4>0 ):
+        printf("%s: Delay for %d seconds\n", whoAmI(), nDelayAfter4)
+        fflush(stdout)
+        sleep(nDelayAfter4)
+        printf("%s: Continue after %d delay\n", whoAmI(), nDelayAfter4)
+        fflush(stdout)
 
-  if( nDelayAfter4>0 ){
-    printf("%s: Delay for %d seconds\n", whoAmI(), nDelayAfter4);
-    fflush(stdout);
-    sleep(nDelayAfter4);
-    printf("%s: Continue after %d delay\n", whoAmI(), nDelayAfter4);
-    fflush(stdout);
-  }
+    /**  Step 5 **/
+    if( child!=0 ):
+        printf("Step 5:\n")
+        if( !bCommitBeforeFork ):
+            sqlExec(db, "COMMIT", 0)
+        sqlExec(db, "SELECT x FROM t1;", 1)
 
-  /**  Step 5 **/
-  if( child!=0 ){
-    printf("Step 5:\n");
-    if( !bCommitBeforeFork ) sqlExec(db, "COMMIT", 0);
-    sqlExec(db, "SELECT x FROM t1;", 1);
-  }    
-  
+    /** Step 7 **/
+    if( child==0 ):
+        sleep(2)
+        printf("Steps 7 and 8:\n")
+        rc = sqlite3_open(zFilename, &db)
+        if( rc ):
+            printf("Child unable to reopen the database.  rc = %d\n", rc)
+            exit(1)
+        sqlExec(db, "SELECT * FROM t1;", 1)
 
-  /** Step 7 **/
-  if( child==0 ){
-    sleep(2);
-    printf("Steps 7 and 8:\n");
-    rc = sqlite3_open(zFilename, &db);
-    if( rc ){
-      printf("Child unable to reopen the database.  rc = %d\n", rc);
-      exit(1);
-    }
-    sqlExec(db, "SELECT * FROM t1;", 1);
+        /** Step 8 **/
+        sqlExec(db, "INSERT INTO t1 VALUES('Third row');", 0)
+        sqlExec(db, "SELECT * FROM t1;", 1)
+        sleep(1)
+        return 0
+    c2 = wait(&status)
+    printf("Process %d finished with status %d\n", c2, status)
 
-    /** Step 8 **/
-    sqlExec(db, "INSERT INTO t1 VALUES('Third row');", 0);
-    sqlExec(db, "SELECT * FROM t1;", 1);
-    sleep(1);
-    return 0;
-  }
-  c2 = wait(&status);
-  printf("Process %d finished with status %d\n", c2, status);
+    /** Step 9 */
+    if( child!=0 ):
+        printf("Step 9:\n")
+        sqlExec(db, "SELECT * FROM t1;", 1)
 
-  /** Step 9 */
-  if( child!=0 ){
-    printf("Step 9:\n");
-    sqlExec(db, "SELECT * FROM t1;", 1);
-  }
-
-  return 0;
-}
+    return 0

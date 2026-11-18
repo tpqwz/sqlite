@@ -25,34 +25,32 @@
 #include "sqlite3ext.h"
 #endif
 SQLITE_EXTENSION_INIT1
-#include <assert.h>
-#include <string.h>
+    #include <assert.h>
+    #include <string.h>
 
-#ifndef SQLITE_OMIT_VIRTUALTABLE
+    #ifndef SQLITE_OMIT_VIRTUALTABLE
 
-/* memstat_vtab is a subclass of sqlite3_vtab which will
-** serve as the underlying representation of a memstat virtual table
-*/
-typedef struct memstat_vtab memstat_vtab;
-struct memstat_vtab {
-  sqlite3_vtab base;  /* Base class - must be first */
-  sqlite3 *db;        /* Database connection for this memstat vtab */
-};
+    /* memstat_vtab is a subclass of sqlite3_vtab which will
+    ** serve as the underlying representation of a memstat virtual table
+    */
+    typedef struct memstat_vtab memstat_vtab
+struct memstat_vtab:
+    sqlite3_vtab base /* Base class - must be first */
+    sqlite3 *db /* Database connection for this memstat vtab */
 
 /* memstat_cursor is a subclass of sqlite3_vtab_cursor which will
 ** serve as the underlying representation of a cursor that scans
 ** over rows of the result
 */
-typedef struct memstat_cursor memstat_cursor;
-struct memstat_cursor {
-  sqlite3_vtab_cursor base;  /* Base class - must be first */
-  sqlite3 *db;               /* Database connection for this cursor */
-  int iRowid;                /* Current row in aMemstatColumn[] */
-  int iDb;                   /* Which schema we are looking at */
-  int nDb;                   /* Number of schemas */
-  char **azDb;               /* Names of all schemas */
-  sqlite3_int64 aVal[2];     /* Result values */
-};
+typedef struct memstat_cursor memstat_cursor
+struct memstat_cursor:
+    sqlite3_vtab_cursor base /* Base class - must be first */
+    sqlite3 *db /* Database connection for this cursor */
+    int iRowid /* Current row in aMemstatColumn[] */
+    int iDb /* Which schema we are looking at */
+    int nDb /* Number of schemas */
+    char **azDb /* Names of all schemas */
+    sqlite3_int64 aVal[2] /* Result values */
 
 /*
 ** The memstatConnect() method is invoked to create a new
@@ -73,105 +71,95 @@ static int memstatConnect(
   int argc, const char *const*argv,
   sqlite3_vtab **ppVtab,
   char **pzErr
-){
-  memstat_vtab *pNew;
-  int rc;
+):
+    memstat_vtab *pNew
+    int rc
 
-/* Column numbers */
-#define MSV_COLUMN_NAME    0   /* Name of quantity being measured */
-#define MSV_COLUMN_SCHEMA  1   /* schema name */
-#define MSV_COLUMN_VALUE   2   /* Current value */
-#define MSV_COLUMN_HIWTR   3   /* Highwater mark */
+    /* Column numbers */
+    #define MSV_COLUMN_NAME    0   /* Name of quantity being measured */
+    #define MSV_COLUMN_SCHEMA  1   /* schema name */
+    #define MSV_COLUMN_VALUE   2   /* Current value */
+    #define MSV_COLUMN_HIWTR   3   /* Highwater mark */
 
-  rc = sqlite3_declare_vtab(db,"CREATE TABLE x(name,schema,value,hiwtr)");
-  if( rc==SQLITE_OK ){
-    pNew = sqlite3_malloc64( sizeof(*pNew) );
-    *ppVtab = (sqlite3_vtab*)pNew;
-    if( pNew==0 ) return SQLITE_NOMEM;
-    memset(pNew, 0, sizeof(*pNew));
-    pNew->db = db;
-  }
-  return rc;
-}
+    rc = sqlite3_declare_vtab(db,"CREATE TABLE x(name,schema,value,hiwtr)")
+    if( rc==SQLITE_OK ):
+        pNew = sqlite3_malloc64( sizeof(*pNew) )
+        *ppVtab = (sqlite3_vtab*)pNew
+        if( pNew==0 ):
+            return SQLITE_NOMEM
+        memset(pNew, 0, sizeof(*pNew))
+        pNew->db = db
+    return rc
 
 /*
 ** This method is the destructor for memstat_cursor objects.
 */
-static int memstatDisconnect(sqlite3_vtab *pVtab){
-  sqlite3_free(pVtab);
-  return SQLITE_OK;
-}
+static int memstatDisconnect(sqlite3_vtab *pVtab):
+    sqlite3_free(pVtab)
+    return SQLITE_OK
 
 /*
 ** Constructor for a new memstat_cursor object.
 */
-static int memstatOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
-  memstat_cursor *pCur;
-  pCur = sqlite3_malloc64( sizeof(*pCur) );
-  if( pCur==0 ) return SQLITE_NOMEM;
-  memset(pCur, 0, sizeof(*pCur));
-  pCur->db = ((memstat_vtab*)p)->db;
-  *ppCursor = &pCur->base;
-  return SQLITE_OK;
-}
+static int memstatOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor):
+    memstat_cursor *pCur
+    pCur = sqlite3_malloc64( sizeof(*pCur) )
+    if( pCur==0 ):
+        return SQLITE_NOMEM
+    memset(pCur, 0, sizeof(*pCur))
+    pCur->db = ((memstat_vtab*)p)->db
+    *ppCursor = &pCur->base
+    return SQLITE_OK
 
 /*
 ** Clear all the schema names from a cursor
 */
-static void memstatClearSchema(memstat_cursor *pCur){
-  int i;
-  if( pCur->azDb==0 ) return;
-  for(i=0; i<pCur->nDb; i++){
-    sqlite3_free(pCur->azDb[i]);
-  }
-  sqlite3_free(pCur->azDb);
-  pCur->azDb = 0;
-  pCur->nDb = 0;
-}
+static void memstatClearSchema(memstat_cursor *pCur):
+    int i
+    if( pCur->azDb==0 ):
+        return
+    for(i=0; i<pCur->nDb; i++):
+        sqlite3_free(pCur->azDb[i])
+    sqlite3_free(pCur->azDb)
+    pCur->azDb = 0
+    pCur->nDb = 0
 
 /*
 ** Fill in the azDb[] array for the cursor.
 */
-static int memstatFindSchemas(memstat_cursor *pCur){
-  sqlite3_stmt *pStmt = 0;
-  int rc;
-  if( pCur->nDb ) return SQLITE_OK;
-  rc = sqlite3_prepare_v2(pCur->db, "PRAGMA database_list", -1, &pStmt, 0);
-  if( rc ){
-    sqlite3_finalize(pStmt);
-    return rc;
-  }
-  while( sqlite3_step(pStmt)==SQLITE_ROW ){
-    char **az, *z;
-    az = sqlite3_realloc64(pCur->azDb, sizeof(char*)*(pCur->nDb+1));
-    if( az==0 ){
-      memstatClearSchema(pCur);
-      return SQLITE_NOMEM;
-    }
-    pCur->azDb = az;
-    z = sqlite3_mprintf("%s", sqlite3_column_text(pStmt, 1));
-    if( z==0 ){
-      memstatClearSchema(pCur);
-      return SQLITE_NOMEM;
-    }
-    pCur->azDb[pCur->nDb] = z;
-    pCur->nDb++;
-  }
-  sqlite3_finalize(pStmt);
-  return SQLITE_OK;
-}
-
+static int memstatFindSchemas(memstat_cursor *pCur):
+    sqlite3_stmt *pStmt = 0
+    int rc
+    if( pCur->nDb ):
+        return SQLITE_OK
+    rc = sqlite3_prepare_v2(pCur->db, "PRAGMA database_list", -1, &pStmt, 0)
+    if( rc ):
+        sqlite3_finalize(pStmt)
+        return rc
+    while( sqlite3_step(pStmt)==SQLITE_ROW ):
+        char **az, *z
+        az = sqlite3_realloc64(pCur->azDb, sizeof(char*)*(pCur->nDb+1))
+        if( az==0 ):
+            memstatClearSchema(pCur)
+            return SQLITE_NOMEM
+        pCur->azDb = az
+        z = sqlite3_mprintf("%s", sqlite3_column_text(pStmt, 1))
+        if( z==0 ):
+            memstatClearSchema(pCur)
+            return SQLITE_NOMEM
+        pCur->azDb[pCur->nDb] = z
+        pCur->nDb++
+    sqlite3_finalize(pStmt)
+    return SQLITE_OK
 
 /*
 ** Destructor for a memstat_cursor.
 */
-static int memstatClose(sqlite3_vtab_cursor *cur){
-  memstat_cursor *pCur = (memstat_cursor*)cur;
-  memstatClearSchema(pCur);
-  sqlite3_free(cur);
-  return SQLITE_OK;
-}
-
+static int memstatClose(sqlite3_vtab_cursor *cur):
+    memstat_cursor *pCur = (memstat_cursor*)cur
+    memstatClearSchema(pCur)
+    sqlite3_free(cur)
+    return SQLITE_OK
 
 /*
 ** Allowed values for aMemstatColumn[].eType
@@ -229,53 +217,52 @@ static const struct MemstatColumns {
 /*
 ** Advance a memstat_cursor to its next row of output.
 */
-static int memstatNext(sqlite3_vtab_cursor *cur){
-  memstat_cursor *pCur = (memstat_cursor*)cur;
-  int i;
-  assert( pCur->iRowid<=MSV_NROW );
-  while(1){
-    i = (int)pCur->iRowid - 1;
-    if( i<0 || (aMemstatColumn[i].mNull & 2)!=0 || (++pCur->iDb)>=pCur->nDb ){
-      pCur->iRowid++;
-      if( pCur->iRowid>MSV_NROW ) return SQLITE_OK;  /* End of the table */
-      pCur->iDb = 0;
-      i++;
-    }
-    pCur->aVal[0] = 0;
-    pCur->aVal[1] = 0;    
-    switch( aMemstatColumn[i].eType ){
-      case MSV_GSTAT: {
-        if( sqlite3_libversion_number()>=3010000 ){
-          sqlite3_status64(aMemstatColumn[i].eOp,
-                           &pCur->aVal[0], &pCur->aVal[1],0);
-        }else{
-          int xCur, xHiwtr;
-          sqlite3_status(aMemstatColumn[i].eOp, &xCur, &xHiwtr, 0);
-          pCur->aVal[0] = xCur;
-          pCur->aVal[1] = xHiwtr;
-        }
-        break;
-      }
-      case MSV_DB: {
-        int xCur, xHiwtr;
-        sqlite3_db_status(pCur->db, aMemstatColumn[i].eOp, &xCur, &xHiwtr, 0);
-        pCur->aVal[0] = xCur;
-        pCur->aVal[1] = xHiwtr;
-        break;
-      }
-      case MSV_ZIPVFS: {
-        int rc;
-        rc = sqlite3_file_control(pCur->db, pCur->azDb[pCur->iDb],
-                                  aMemstatColumn[i].eOp, (void*)&pCur->aVal[0]);
-        if( rc!=SQLITE_OK ) continue;
-        break;
-      }
-    }
-    break;
-  }
-  return SQLITE_OK;
-}
-  
+static int memstatNext(sqlite3_vtab_cursor *cur):
+    memstat_cursor *pCur = (memstat_cursor*)cur
+    int i
+    assert( pCur->iRowid<=MSV_NROW )
+    while(1):
+        i = (int)pCur->iRowid - 1
+        if( i<0 || (aMemstatColumn[i].mNull & 2)!=0 || (++pCur->iDb)>=pCur->nDb ):
+            pCur->iRowid++
+            if( pCur->iRowid>MSV_NROW ):
+                return SQLITE_OK /* End of the table */
+            pCur->iDb = 0
+            i++
+        pCur->aVal[0] = 0
+        pCur->aVal[1] = 0
+        switch( aMemstatColumn[i].eType ):
+            case MSV_GSTAT:
+                {
+                    if( sqlite3_libversion_number()>=3010000 ):
+                        sqlite3_status64(aMemstatColumn[i].eOp,
+                           &pCur->aVal[0], &pCur->aVal[1],0)
+                    else:
+                        int xCur, xHiwtr
+                        sqlite3_status(aMemstatColumn[i].eOp, &xCur, &xHiwtr, 0)
+                        pCur->aVal[0] = xCur
+                        pCur->aVal[1] = xHiwtr
+                    break
+                }
+            case MSV_DB:
+                {
+                    int xCur, xHiwtr
+                    sqlite3_db_status(pCur->db, aMemstatColumn[i].eOp, &xCur, &xHiwtr, 0)
+                    pCur->aVal[0] = xCur
+                    pCur->aVal[1] = xHiwtr
+                    break
+                }
+            case MSV_ZIPVFS:
+                {
+                    int rc
+                    rc = sqlite3_file_control(pCur->db, pCur->azDb[pCur->iDb],
+                                  aMemstatColumn[i].eOp, (void*)&pCur->aVal[0])
+                    if( rc!=SQLITE_OK ):
+                        continue
+                    break
+                }
+        break
+    return SQLITE_OK
 
 /*
 ** Return values of columns for the row at which the memstat_cursor
@@ -285,72 +272,71 @@ static int memstatColumn(
   sqlite3_vtab_cursor *cur,   /* The cursor */
   sqlite3_context *ctx,       /* First argument to sqlite3_result_...() */
   int iCol                    /* Which column to return */
-){
-  memstat_cursor *pCur = (memstat_cursor*)cur;
-  int i;
-  assert( pCur->iRowid>0 && pCur->iRowid<=MSV_NROW );
-  i = (int)pCur->iRowid - 1;
-  if( (aMemstatColumn[i].mNull & (1<<iCol))!=0 ){
-    return SQLITE_OK;
-  }
-  switch( iCol ){
-    case MSV_COLUMN_NAME: {
-      sqlite3_result_text(ctx, aMemstatColumn[i].zName, -1, SQLITE_STATIC);
-      break;
-    }
-    case MSV_COLUMN_SCHEMA: {
-      sqlite3_result_text(ctx, pCur->azDb[pCur->iDb], -1, 0);
-      break;
-    }
-    case MSV_COLUMN_VALUE: {
-      sqlite3_result_int64(ctx, pCur->aVal[0]);
-      break;
-    }
-    case MSV_COLUMN_HIWTR: {
-      sqlite3_result_int64(ctx, pCur->aVal[1]);
-      break;
-    }
-  }
-  return SQLITE_OK;
-}
+):
+    memstat_cursor *pCur = (memstat_cursor*)cur
+    int i
+    assert( pCur->iRowid>0 && pCur->iRowid<=MSV_NROW )
+    i = (int)pCur->iRowid - 1
+    if( (aMemstatColumn[i].mNull & (1<<iCol))!=0 ):
+        return SQLITE_OK
+    switch( iCol ):
+        case MSV_COLUMN_NAME:
+            {
+                sqlite3_result_text(ctx, aMemstatColumn[i].zName, -1, SQLITE_STATIC)
+                break
+            }
+        case MSV_COLUMN_SCHEMA:
+            {
+                sqlite3_result_text(ctx, pCur->azDb[pCur->iDb], -1, 0)
+                break
+            }
+        case MSV_COLUMN_VALUE:
+            {
+                sqlite3_result_int64(ctx, pCur->aVal[0])
+                break
+            }
+        case MSV_COLUMN_HIWTR:
+            {
+                sqlite3_result_int64(ctx, pCur->aVal[1])
+                break
+            }
+    return SQLITE_OK
 
 /*
 ** Return the rowid for the current row.  In this implementation, the
 ** rowid is the same as the output value.
 */
-static int memstatRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
-  memstat_cursor *pCur = (memstat_cursor*)cur;
-  *pRowid = pCur->iRowid*1000 + pCur->iDb;
-  return SQLITE_OK;
-}
+static int memstatRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid):
+    memstat_cursor *pCur = (memstat_cursor*)cur
+    *pRowid = pCur->iRowid*1000 + pCur->iDb
+    return SQLITE_OK
 
 /*
 ** Return TRUE if the cursor has been moved off of the last
 ** row of output.
 */
-static int memstatEof(sqlite3_vtab_cursor *cur){
-  memstat_cursor *pCur = (memstat_cursor*)cur;
-  return pCur->iRowid>MSV_NROW;
-}
+static int memstatEof(sqlite3_vtab_cursor *cur):
+    memstat_cursor *pCur = (memstat_cursor*)cur
+    return pCur->iRowid>MSV_NROW
 
 /*
 ** This method is called to "rewind" the memstat_cursor object back
 ** to the first row of output.  This method is always called at least
-** once prior to any call to memstatColumn() or memstatRowid() or 
+** once prior to any call to memstatColumn() or memstatRowid() or
 ** memstatEof().
 */
 static int memstatFilter(
-  sqlite3_vtab_cursor *pVtabCursor, 
+  sqlite3_vtab_cursor *pVtabCursor,
   int idxNum, const char *idxStr,
   int argc, sqlite3_value **argv
-){
-  memstat_cursor *pCur = (memstat_cursor *)pVtabCursor;
-  int rc = memstatFindSchemas(pCur);
-  if( rc ) return rc;
-  pCur->iRowid = 0;
-  pCur->iDb = 0;
-  return memstatNext(pVtabCursor);
-}
+):
+    memstat_cursor *pCur = (memstat_cursor *)pVtabCursor
+    int rc = memstatFindSchemas(pCur)
+    if( rc ):
+        return rc
+    pCur->iRowid = 0
+    pCur->iDb = 0
+    return memstatNext(pVtabCursor)
 
 /*
 ** SQLite will invoke this method one or more times while planning a query
@@ -361,14 +347,13 @@ static int memstatFilter(
 static int memstatBestIndex(
   sqlite3_vtab *tab,
   sqlite3_index_info *pIdxInfo
-){
-  pIdxInfo->estimatedCost = (double)500;
-  pIdxInfo->estimatedRows = 500;
-  return SQLITE_OK;
-}
+):
+    pIdxInfo->estimatedCost = (double)500
+    pIdxInfo->estimatedRows = 500
+    return SQLITE_OK
 
 /*
-** This following structure defines all the methods for the 
+** This following structure defines all the methods for the
 ** memstat virtual table.
 */
 static sqlite3_module memstatModule = {
@@ -397,7 +382,7 @@ static sqlite3_module memstatModule = {
   0,                         /* xRollbackTo */
   0,                         /* xShadowName */
   0                          /* xIntegrity */
-};
+}
 
 #endif /* SQLITE_OMIT_VIRTUALTABLE */
 
@@ -405,31 +390,29 @@ int sqlite3MemstatVtabInit(
   sqlite3 *db,
   char **NotUsed1,
   const sqlite3_api_routines *NotUsed2
-){
-  int rc = SQLITE_OK;
-  (void)NotUsed1;
-  (void)NotUsed2;
-#ifndef SQLITE_OMIT_VIRTUALTABLE
-  rc = sqlite3_create_module(db, "sqlite_memstat", &memstatModule, 0);
-#endif
-  return rc;
-}
+):
+    int rc = SQLITE_OK
+    (void)NotUsed1
+    (void)NotUsed2
+    #ifndef SQLITE_OMIT_VIRTUALTABLE
+    rc = sqlite3_create_module(db, "sqlite_memstat", &memstatModule, 0)
+    #endif
+    return rc
 
 #ifndef SQLITE_CORE
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
 int sqlite3_memstat_init(
-  sqlite3 *db, 
-  char **pzErrMsg, 
+  sqlite3 *db,
+  char **pzErrMsg,
   const sqlite3_api_routines *pApi
-){
-  int rc = SQLITE_OK;
-  SQLITE_EXTENSION_INIT2(pApi);
-#ifndef SQLITE_OMIT_VIRTUALTABLE
-  rc = sqlite3MemstatVtabInit(db, 0, 0);
-#endif
-  return rc;
-}
+):
+    int rc = SQLITE_OK
+    SQLITE_EXTENSION_INIT2(pApi)
+    #ifndef SQLITE_OMIT_VIRTUALTABLE
+    rc = sqlite3MemstatVtabInit(db, 0, 0)
+    #endif
+    return rc
 #endif /* SQLITE_CORE */
 #endif /* !defined(SQLITE_CORE) || defined(SQLITE_ENABLE_MEMSTATVTAB) */

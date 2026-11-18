@@ -87,7 +87,7 @@
 
 # include "sqlite3ext.h"
 
-SQLITE_EXTENSION_INIT1;
+SQLITE_EXTENSION_INIT1
 
 #else
 
@@ -104,15 +104,13 @@ static char *zHelp =
   "   content to be converted to/from base85 on stdout/stdin.\n"
   " <binFile> names a binary file to be rendered or created.\n"
   "   Or, the name '-' refers to the stdin or stdout stream.\n"
-  ;
 
-static void sayHelp(){
-  printf("%s", zHelp);
-}
+static void sayHelp():
+    printf("%s", zHelp)
 #endif
 
 #ifndef U8_TYPEDEF
-typedef unsigned char u8;
+typedef unsigned char u8
 #define U8_TYPEDEF
 #endif
 
@@ -122,7 +120,7 @@ typedef unsigned char u8;
 #define B85_CLASS( c ) (((c)>='#')+((c)>'&')+((c)>='*')+((c)>'z'))
 
 /* Provide digitValue to b85Numeral offset as a function of above class. */
-static u8 b85_cOffset[] = { 0, '#', 0, '*'-4, 0 };
+static u8 b85_cOffset[] = { 0, '#', 0, '*'-4, 0 }
 #define B85_DNOS( c ) b85_cOffset[B85_CLASS(c)]
 
 /* Say whether c is a base85 numeral. */
@@ -139,12 +137,11 @@ static u8 base85DigitValue( char c ){
 /* Width of base64 lines. Should be an integer multiple of 5. */
 #define B85_DARK_MAX 80
 
-
-static char * skipNonB85( char *s, int nc ){
-  char c;
-  while( nc-- > 0 && (c = *s) && !IS_B85(c) ) ++s;
-  return s;
-}
+static char * skipNonB85( char *s, int nc ):
+    char c
+    while( nc-- > 0 && (c = *s) && !IS_B85(c) ):
+        ++s
+    return s
 
 /* Convert small integer, known to be in 0..84 inclusive, to base85 numeral.
  * Do not use the macro form with argument expression having a side-effect.*/
@@ -157,193 +154,177 @@ static char base85Numeral( u8 b ){
   ((char)(((dn) < 4)? (char)((dn) + '#') : (char)((dn) - 4 + '*')))
 #endif
 
-static char *putcs(char *pc, char *s){
-  char c;
-  while( (c = *s++)!=0 ) *pc++ = c;
-  return pc;
-}
+static char *putcs(char *pc, char *s):
+    char c
+    while( (c = *s++)!=0 ):
+        *pc++ = c
+    return pc
 
 /* Encode a byte buffer into base85 text. If pSep!=0, it's a C string
 ** to be appended to encoded groups to limit their length to B85_DARK_MAX
 ** or to terminate the last group (to aid concatenation.)
 */
-static char* toBase85( u8 *pIn, int nbIn, char *pOut, char *pSep ){
-  int nCol = 0;
-  while( nbIn >= 4 ){
-    int nco = 5;
-    unsigned long qbv = (((unsigned long)pIn[0])<<24) |
-                        (pIn[1]<<16) | (pIn[2]<<8) | pIn[3];
-    while( nco > 0 ){
-      unsigned nqv = (unsigned)(qbv/85UL);
-      unsigned char dv = qbv - 85UL*nqv;
-      qbv = nqv;
-      pOut[--nco] = base85Numeral(dv);
-    }
-    nbIn -= 4;
-    pIn += 4;
-    pOut += 5;
-    if( pSep && (nCol += 5)>=B85_DARK_MAX ){
-      pOut = putcs(pOut, pSep);
-      nCol = 0;
-    }
-  }
-  if( nbIn > 0 ){
-    int nco = nbIn + 1;
-    unsigned long qv = *pIn++;
-    int nbe = 1;
-    while( nbe++ < nbIn ){
-      qv = (qv<<8) | *pIn++;
-    }
-    nCol += nco;
-    while( nco > 0 ){
-      u8 dv = (u8)(qv % 85);
-      qv /= 85;
-      pOut[--nco] = base85Numeral(dv);
-    }
-    pOut += (nbIn+1);
-  }
-  if( pSep && nCol>0 ) pOut = putcs(pOut, pSep);
-  *pOut = 0;
-  return pOut;
-}
+static char* toBase85( u8 *pIn, int nbIn, char *pOut, char *pSep ):
+    int nCol = 0
+    while( nbIn >= 4 ):
+        int nco = 5
+        unsigned long qbv = (((unsigned long)pIn[0])<<24) |
+                        (pIn[1]<<16) | (pIn[2]<<8) | pIn[3]
+        while( nco > 0 ):
+            unsigned nqv = (unsigned)(qbv/85UL)
+            unsigned char dv = qbv - 85UL*nqv
+            qbv = nqv
+            pOut[--nco] = base85Numeral(dv)
+        nbIn -= 4
+        pIn += 4
+        pOut += 5
+        if( pSep && (nCol += 5)>=B85_DARK_MAX ):
+            pOut = putcs(pOut, pSep)
+            nCol = 0
+    if( nbIn > 0 ):
+        int nco = nbIn + 1
+        unsigned long qv = *pIn++
+        int nbe = 1
+        while( nbe++ < nbIn ):
+            qv = (qv<<8) | *pIn++
+        nCol += nco
+        while( nco > 0 ):
+            u8 dv = (u8)(qv % 85)
+            qv /= 85
+            pOut[--nco] = base85Numeral(dv)
+        pOut += (nbIn+1)
+    if( pSep && nCol>0 ):
+        pOut = putcs(pOut, pSep)
+    *pOut = 0
+    return pOut
 
 /* Decode base85 text into a byte buffer. */
-static u8* fromBase85( char *pIn, int ncIn, u8 *pOut ){
-  if( ncIn>0 && pIn[ncIn-1]=='\n' ) --ncIn;
-  while( ncIn>0 ){
-    static signed char nboi[] = { 0, 0, 1, 2, 3, 4 };
-    char *pUse = skipNonB85(pIn, ncIn);
-    unsigned long qv = 0L;
-    int nti, nbo;
-    ncIn -= (pUse - pIn);
-    pIn = pUse;
-    nti = (ncIn>5)? 5 : ncIn;
-    nbo = nboi[nti];
-    if( nbo==0 ) break;
-    while( nti>0 ){
-      char c = *pIn++;
-      u8 cdo = B85_DNOS(c);
-      --ncIn;
-      if( cdo==0 ) break;
-      qv = 85 * qv + (c - cdo);
-      --nti;
-    }
-    nbo -= nti; /* Adjust for early (non-digit) end of group. */
-    switch( nbo ){
-    case 4:
-      *pOut++ = (qv >> 24)&0xff;
-      /* FALLTHRU */
-    case 3:
-      *pOut++ = (qv >> 16)&0xff;
-      /* FALLTHRU */
-    case 2:
-      *pOut++ = (qv >> 8)&0xff;
-      /* FALLTHRU */
-    case 1:
-      *pOut++ = qv&0xff;
-      /* FALLTHRU */
-    case 0:
-      break;
-    }
-  }
-  return pOut;
-}
+static u8* fromBase85( char *pIn, int ncIn, u8 *pOut ):
+    if( ncIn>0 && pIn[ncIn-1]=='\n' ):
+        --ncIn
+    while( ncIn>0 ):
+        static signed char nboi[] = { 0, 0, 1, 2, 3, 4 }
+        char *pUse = skipNonB85(pIn, ncIn)
+        unsigned long qv = 0L
+        int nti, nbo
+        ncIn -= (pUse - pIn)
+        pIn = pUse
+        nti = (ncIn>5)? 5 : ncIn
+        nbo = nboi[nti]
+        if( nbo==0 ):
+            break
+        while( nti>0 ):
+            char c = *pIn++
+            u8 cdo = B85_DNOS(c)
+            --ncIn
+            if( cdo==0 ):
+                break
+            qv = 85 * qv + (c - cdo)
+            --nti
+        nbo -= nti /* Adjust for early (non-digit) end of group. */
+        switch( nbo ):
+            case 4:
+                *pOut++ = (qv >> 24)&0xff
+            /* FALLTHRU */
+            case 3:
+                *pOut++ = (qv >> 16)&0xff
+            /* FALLTHRU */
+            case 2:
+                *pOut++ = (qv >> 8)&0xff
+            /* FALLTHRU */
+            case 1:
+                *pOut++ = qv&0xff
+            /* FALLTHRU */
+            case 0:
+                break
+    return pOut
 
 #ifndef OMIT_BASE85_CHECKER
 /* Say whether input char sequence is all (base85 and/or whitespace).*/
-static int allBase85( char *p, int len ){
-  char c;
-  while( len-- > 0 && (c = *p++) != 0 ){
-    if( !IS_B85(c) && !isspace(c) ) return 0;
-  }
-  return 1;
-}
+static int allBase85( char *p, int len ):
+    char c
+    while( len-- > 0 && (c = *p++) != 0 ):
+        if( !IS_B85(c) && !isspace(c) ):
+            return 0
+    return 1
 #endif
 
 #ifndef BASE85_STANDALONE
 
 #ifndef OMIT_BASE85_CHECKER
 /* This function does the work for the SQLite is_base85(t) UDF. */
-static void is_base85(sqlite3_context *context, int na, sqlite3_value *av[]){
-  assert(na==1);
-  switch( sqlite3_value_type(av[0]) ){
-  case SQLITE_TEXT:
-    {
-      int rv = allBase85( (char *)sqlite3_value_text(av[0]),
-                          sqlite3_value_bytes(av[0]) );
-      sqlite3_result_int(context, rv);
-    }
-    break;
-  case SQLITE_NULL:
-    sqlite3_result_null(context);
-    break;
-  default:
-    sqlite3_result_error(context, "is_base85 accepts only text or NULL", -1);
-    return;
-  }
-}
+static void is_base85(sqlite3_context *context, int na, sqlite3_value *av[]):
+    assert(na==1)
+    switch( sqlite3_value_type(av[0]) ):
+        case SQLITE_TEXT:
+            {
+                int rv = allBase85( (char *)sqlite3_value_text(av[0]),
+                          sqlite3_value_bytes(av[0]) )
+                sqlite3_result_int(context, rv)
+            }
+            break
+        case SQLITE_NULL:
+            sqlite3_result_null(context)
+            break
+        default:
+            sqlite3_result_error(context, "is_base85 accepts only text or NULL", -1)
+            return
 #endif
 
 /* This function does the work for the SQLite base85(x) UDF. */
-static void base85(sqlite3_context *context, int na, sqlite3_value *av[]){
-  sqlite3_int64 nb, nc, nv = sqlite3_value_bytes(av[0]);
-  int nvMax = sqlite3_limit(sqlite3_context_db_handle(context),
-                            SQLITE_LIMIT_LENGTH, -1);
-  char *cBuf;
-  u8 *bBuf;
-  assert(na==1);
-  switch( sqlite3_value_type(av[0]) ){
-  case SQLITE_BLOB:
-    nb = nv;
-    /*    ulongs    tail   newlines  tailenc+nul*/
-    nc = 5*(nv/4) + nv%4 + nv/64+1 + 2;
-    if( nvMax < nc ){
-      sqlite3_result_error(context, "blob expanded to base85 too big", -1);
-      return;
-    }
-    bBuf = (u8*)sqlite3_value_blob(av[0]);
-    if( !bBuf ){
-      if( SQLITE_NOMEM==sqlite3_errcode(sqlite3_context_db_handle(context)) ){
-        goto memFail;
-      }
-      sqlite3_result_text(context,"",-1,SQLITE_STATIC);
-      break;
-    }
-    cBuf = sqlite3_malloc64(nc);
-    if( !cBuf ) goto memFail;
-    nc = (int)(toBase85(bBuf, nb, cBuf, "\n") - cBuf);
-    sqlite3_result_text(context, cBuf, nc, sqlite3_free);
-    break;
-  case SQLITE_TEXT:
-    nc = nv;
-    nb = 4*(nv/5) + nv%5; /* may overestimate */
-    if( nvMax < nb ){
-      sqlite3_result_error(context, "blob from base85 may be too big", -1);
-      return;
-    }else if( nb<1 ){
-      nb = 1;
-    }
-    cBuf = (char *)sqlite3_value_text(av[0]);
-    if( !cBuf ){
-      if( SQLITE_NOMEM==sqlite3_errcode(sqlite3_context_db_handle(context)) ){
-        goto memFail;
-      }
-      sqlite3_result_zeroblob(context, 0);
-      break;
-    }
-    bBuf = sqlite3_malloc64(nb);
-    if( !bBuf ) goto memFail;
-    nb = (int)(fromBase85(cBuf, nc, bBuf) - bBuf);
-    sqlite3_result_blob(context, bBuf, nb, sqlite3_free);
-    break;
-  default:
-    sqlite3_result_error(context, "base85 accepts only blob or text.", -1);
-    return;
-  }
-  return;
- memFail:
-  sqlite3_result_error(context, "base85 OOM", -1);
-}
+static void base85(sqlite3_context *context, int na, sqlite3_value *av[]):
+    sqlite3_int64 nb, nc, nv = sqlite3_value_bytes(av[0])
+    int nvMax = sqlite3_limit(sqlite3_context_db_handle(context),
+                            SQLITE_LIMIT_LENGTH, -1)
+    char *cBuf
+    u8 *bBuf
+    assert(na==1)
+    switch( sqlite3_value_type(av[0]) ):
+        case SQLITE_BLOB:
+            nb = nv
+            /*    ulongs    tail   newlines  tailenc+nul*/
+            nc = 5*(nv/4) + nv%4 + nv/64+1 + 2
+            if( nvMax < nc ):
+                sqlite3_result_error(context, "blob expanded to base85 too big", -1)
+                return
+            bBuf = (u8*)sqlite3_value_blob(av[0])
+            if( !bBuf ):
+                if( SQLITE_NOMEM==sqlite3_errcode(sqlite3_context_db_handle(context)) ):
+                    goto memFail
+                sqlite3_result_text(context,"",-1,SQLITE_STATIC)
+                break
+            cBuf = sqlite3_malloc64(nc)
+            if( !cBuf ):
+                goto memFail
+            nc = (int)(toBase85(bBuf, nb, cBuf, "\n") - cBuf)
+            sqlite3_result_text(context, cBuf, nc, sqlite3_free)
+            break
+        case SQLITE_TEXT:
+            nc = nv
+            nb = 4*(nv/5) + nv%5 /* may overestimate */
+            if( nvMax < nb ):
+                sqlite3_result_error(context, "blob from base85 may be too big", -1)
+                return
+            else if( nb<1 ):
+                nb = 1
+            cBuf = (char *)sqlite3_value_text(av[0])
+            if( !cBuf ):
+                if( SQLITE_NOMEM==sqlite3_errcode(sqlite3_context_db_handle(context)) ):
+                    goto memFail
+                sqlite3_result_zeroblob(context, 0)
+                break
+            bBuf = sqlite3_malloc64(nb)
+            if( !bBuf ):
+                goto memFail
+            nb = (int)(fromBase85(cBuf, nc, bBuf) - bBuf)
+            sqlite3_result_blob(context, bBuf, nb, sqlite3_free)
+            break
+        default:
+            sqlite3_result_error(context, "base85 accepts only blob or text.", -1)
+            return
+    return
+    memFail:
+    sqlite3_result_error(context, "base85 OOM", -1)
 
 /*
 ** Establish linkage to running SQLite library.
@@ -356,23 +337,22 @@ int sqlite3_base85_init
 #else
 static int sqlite3_base85_init
 #endif
-(sqlite3 *db, char **pzErr, const sqlite3_api_routines *pApi){
-  SQLITE_EXTENSION_INIT2(pApi);
-  (void)pzErr;
-#ifndef OMIT_BASE85_CHECKER
-  {
-    int rc = sqlite3_create_function
-      (db, "is_base85", 1,
-       SQLITE_DETERMINISTIC|SQLITE_INNOCUOUS|SQLITE_UTF8,
-       0, is_base85, 0, 0);
-    if( rc!=SQLITE_OK ) return rc;
-  }
-#endif
-  return sqlite3_create_function
+(sqlite3 *db, char **pzErr, const sqlite3_api_routines *pApi):
+    SQLITE_EXTENSION_INIT2(pApi)
+    (void)pzErr
+    :
+        #ifndef OMIT_BASE85_CHECKER
+        int rc = sqlite3_create_function
+        (db, "is_base85", 1,
+        SQLITE_DETERMINISTIC|SQLITE_INNOCUOUS|SQLITE_UTF8,
+        0, is_base85, 0, 0)
+        if( rc!=SQLITE_OK ):
+            return rc
+    #endif
+    return sqlite3_create_function
     (db, "base85", 1,
      SQLITE_DETERMINISTIC|SQLITE_INNOCUOUS|SQLITE_DIRECTONLY|SQLITE_UTF8,
-     0, base85, 0, 0);
-}
+     0, base85, 0, 0)
 
 /*
 ** Define some macros to allow this extension to be built into the shell
@@ -384,71 +364,64 @@ static int sqlite3_base85_init
 
 #else /* standalone program */
 
-int main(int na, char *av[]){
-  int cin;
-  int rc = 0;
-  u8 bBuf[4*(B85_DARK_MAX/5)];
-  char cBuf[5*(sizeof(bBuf)/4)+2];
-  size_t nio;
-# ifndef OMIT_BASE85_CHECKER
-  int b85Clean = 1;
-# endif
-  char rw;
-  FILE *fb = 0, *foc = 0;
-  char fmode[3] = "xb";
-  if( na < 3 || av[1][0]!='-' || (rw = av[1][1])==0 || (rw!='r' && rw!='w') ){
-    sayHelp();
-    return 0;
-  }
-  fmode[0] = rw;
-  if( av[2][0]=='-' && av[2][1]==0 ){
-    switch( rw ){
-    case 'r':
-      fb = stdin;
-      setmode(fileno(stdin), O_BINARY);
-      break;
-    case 'w':
-      fb = stdout;
-      setmode(fileno(stdout), O_BINARY);
-      break;
-    }
-  }else{
-    fb = fopen(av[2], fmode);
-    foc = fb;
-  }
-  if( !fb ){
-    fprintf(stderr, "Cannot open %s for %c\n", av[2], rw);
-    rc = 1;
-  }else{
-    switch( rw ){
-    case 'r':
-      while( (nio = fread( bBuf, 1, sizeof(bBuf), fb))>0 ){
-        toBase85( bBuf, (int)nio, cBuf, 0 );
-        fprintf(stdout, "%s\n", cBuf);
-      }
-      break;
-    case 'w':
-      while( 0 != fgets(cBuf, sizeof(cBuf), stdin) ){
-        int nc = strlen(cBuf);
-        size_t nbo = fromBase85( cBuf, nc, bBuf ) - bBuf;
-        if( 1 != fwrite(bBuf, nbo, 1, fb) ) rc = 1;
-#ifndef OMIT_BASE85_CHECKER
-        b85Clean &= allBase85( cBuf, nc );
-#endif
-      }
-      break;
-    default:
-      sayHelp();
-      rc = 1;
-    }
-    if( foc ) fclose(foc);
-  }
-# ifndef OMIT_BASE85_CHECKER
-  if( !b85Clean ){
-    fprintf(stderr, "Base85 input had non-base85 dark or control content.\n");
-  }
-# endif
-  return rc;
-}
+int main(int na, char *av[]):
+    int cin
+    int rc = 0
+    u8 bBuf[4*(B85_DARK_MAX/5)]
+    char cBuf[5*(sizeof(bBuf)/4)+2]
+    size_t nio
+    # ifndef OMIT_BASE85_CHECKER
+    int b85Clean = 1
+    # endif
+    char rw
+    FILE *fb = 0, *foc = 0
+    char fmode[3] = "xb"
+    if( na < 3 || av[1][0]!='-' || (rw = av[1][1])==0 || (rw!='r' && rw!='w') ):
+        sayHelp()
+        return 0
+    fmode[0] = rw
+    if( av[2][0]=='-' && av[2][1]==0 ):
+        switch( rw ):
+            case 'r':
+                fb = stdin
+                setmode(fileno(stdin), O_BINARY)
+                break
+            case 'w':
+                fb = stdout
+                setmode(fileno(stdout), O_BINARY)
+                break
+    else:
+        fb = fopen(av[2], fmode)
+        foc = fb
+    if( !fb ):
+        fprintf(stderr, "Cannot open %s for %c\n", av[2], rw)
+        rc = 1
+    else:
+        switch( rw ):
+            case 'r':
+                while( (nio = fread( bBuf, 1, sizeof(bBuf), fb))>0 ):
+                    toBase85( bBuf, (int)nio, cBuf, 0 )
+                    fprintf(stdout, "%s\n", cBuf)
+                break
+            case 'w':
+                while( 0 != fgets(cBuf, sizeof(cBuf), stdin) ):
+                    int nc = strlen(cBuf)
+                    size_t nbo = fromBase85( cBuf, nc, bBuf ) - bBuf
+                    if( 1 != fwrite(bBuf, nbo, 1, fb) ):
+                        rc = 1
+                    #ifndef OMIT_BASE85_CHECKER
+                    b85Clean &= allBase85( cBuf, nc )
+                    #endif
+                break
+            default:
+                sayHelp()
+                rc = 1
+        if( foc ):
+            fclose(foc)
+    # ifndef OMIT_BASE85_CHECKER
+    if( !b85Clean ):
+        fprintf(stderr, "Base85 input had non-base85 dark or control content.\n")
+    # endif
+    return rc
 
 #endif

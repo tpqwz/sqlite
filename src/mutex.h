@@ -20,7 +20,6 @@
 ** include this one indirectly.
 */
 
-
 /*
 ** Figure out what version of the code to use.  The choices are
 **
@@ -56,9 +55,9 @@
 */
 #define sqlite3_mutex_alloc(X)    ((sqlite3_mutex*)8)
 #define sqlite3_mutex_free(X)
-#define sqlite3_mutex_enter(X)    
+#define sqlite3_mutex_enter(X)
 #define sqlite3_mutex_try(X)      SQLITE_OK
-#define sqlite3_mutex_leave(X)    
+#define sqlite3_mutex_leave(X)
 #define sqlite3_mutex_held(X)     ((void)(X),1)
 #define sqlite3_mutex_notheld(X)  ((void)(X),1)
 #define sqlite3MutexAlloc(X)      ((sqlite3_mutex*)8)
@@ -67,5 +66,5 @@
 #define MUTEX_LOGIC(X)
 #else
 #define MUTEX_LOGIC(X)            X
-int sqlite3_mutex_held(sqlite3_mutex*);
+int sqlite3_mutex_held(sqlite3_mutex*)
 #endif /* defined(SQLITE_MUTEX_OMIT) */

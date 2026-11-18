@@ -5,11 +5,10 @@
 */
 #include <stdio.h>
 
-extern const char *sqlite3_libversion(void);
-extern const char *sqlite3_sourceid(void);
+extern const char *sqlite3_libversion(void)
+extern const char *sqlite3_sourceid(void)
 
-int main(int argc, char **argv){
-  printf("SQLite version %s\n", sqlite3_libversion());
-  printf("SQLite source  %s\n", sqlite3_sourceid());
-  return 0;
-}
+int main(int argc, char **argv):
+    printf("SQLite version %s\n", sqlite3_libversion())
+    printf("SQLite source  %s\n", sqlite3_sourceid())
+    return 0

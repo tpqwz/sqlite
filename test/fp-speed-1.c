@@ -125,83 +125,77 @@ static double aVal[] = {
   -9.4841878031704268232e+011,
   -3.7398451668304407277e+067,
   +4.8984042008915959963e-091,
-};
+}
 #define NN (sizeof(aVal)/sizeof(aVal[0]))
 
 /* Return the current wall-clock time in microseconds since the
 ** Unix epoch (1970-01-01T00:00:00Z)
 */
-static sqlite3_int64 timeOfDay(void){
-#if defined(_WIN64) && _WIN32_WINNT >= _WIN32_WINNT_WIN8
-  sqlite3_uint64 t;
-  FILETIME tm;
-  GetSystemTimePreciseAsFileTime(&tm);
-  t =  ((sqlite3_uint64)tm.dwHighDateTime<<32) |
-          (sqlite3_uint64)tm.dwLowDateTime;
-  t += 116444736000000000LL;
-  t /= 10;
-  return t;
-#elif defined(_WIN32)
-  static sqlite3_vfs *clockVfs = 0;
-  sqlite3_int64 t;
-  if( clockVfs==0 ) clockVfs = sqlite3_vfs_find(0);
-  if( clockVfs==0 ) return 0;  /* Never actually happens */
-  if( clockVfs->iVersion>=2 && clockVfs->xCurrentTimeInt64!=0 ){
-    clockVfs->xCurrentTimeInt64(clockVfs, &t);
-  }else{
-    double r;
-    clockVfs->xCurrentTime(clockVfs, &r);
-    t = (sqlite3_int64)(r*86400000.0);
-  }
-  return t*1000;
-#else
-  struct timeval sNow;
-  (void)gettimeofday(&sNow,0);
-  return ((sqlite3_int64)sNow.tv_sec)*1000000 + sNow.tv_usec;
-#endif
-}
+static sqlite3_int64 timeOfDay(void):
+    #if defined(_WIN64) && _WIN32_WINNT >= _WIN32_WINNT_WIN8
+    sqlite3_uint64 t
+    FILETIME tm
+    GetSystemTimePreciseAsFileTime(&tm)
+    t =  ((sqlite3_uint64)tm.dwHighDateTime<<32) |
+          (sqlite3_uint64)tm.dwLowDateTime
+    t += 116444736000000000LL
+    t /= 10
+    return t
+    #elif defined(_WIN32)
+    static sqlite3_vfs *clockVfs = 0
+    sqlite3_int64 t
+    if( clockVfs==0 ):
+        clockVfs = sqlite3_vfs_find(0)
+    if( clockVfs==0 ):
+        return 0 /* Never actually happens */
+    if( clockVfs->iVersion>=2 && clockVfs->xCurrentTimeInt64!=0 ):
+        clockVfs->xCurrentTimeInt64(clockVfs, &t)
+    else:
+        double r
+        clockVfs->xCurrentTime(clockVfs, &r)
+        t = (sqlite3_int64)(r*86400000.0)
+    return t*1000
+    #else
+    struct timeval sNow
+    (void)gettimeofday(&sNow,0)
+    return ((sqlite3_int64)sNow.tv_sec)*1000000 + sNow.tv_usec
+    #endif
 
-int main(int argc, char **argv){
-  int i;
-  int cnt;
-  static const char *zFmt = "%.17g";
-  sqlite3_int64 tm1, tm2;
-  char zBuf[1000];
+int main(int argc, char **argv):
+    int i
+    int cnt
+    static const char *zFmt = "%.17g"
+    sqlite3_int64 tm1, tm2
+    char zBuf[1000]
 
-  if( argc!=2 ){
-    printf("Usage:  %s COUNT\n", argv[0]);
-    printf("Suggested value for COUNT is 10 million\n");
-    return 1;
-  }
-  cnt = atoi(argv[1]);
-  if( cnt<100 ){
-    printf("Minimum COUNT value is 100");
-    return 1;
-  }
+    if( argc!=2 ):
+        printf("Usage:  %s COUNT\n", argv[0])
+        printf("Suggested value for COUNT is 10 million\n")
+        return 1
+    cnt = atoi(argv[1])
+    if( cnt<100 ):
+        printf("Minimum COUNT value is 100")
+        return 1
 
-  printf("C-library sprintf(\"%s\"): ", zFmt);
-  fflush(stdout);
-  tm1 = timeOfDay();
-  for(i=0; i<cnt; i++){
-    sprintf(zBuf, zFmt, aVal[i%NN]);
-  }
-  tm1 = timeOfDay() - tm1;
-  printf("%6.1f ns/call, %9.6f sec total\n", tm1*1.0e+3/(double)cnt,tm1*1.0e-6);
+    printf("C-library sprintf(\"%s\"): ", zFmt)
+    fflush(stdout)
+    tm1 = timeOfDay()
+    for(i=0; i<cnt; i++):
+        sprintf(zBuf, zFmt, aVal[i%NN])
+    tm1 = timeOfDay() - tm1
+    printf("%6.1f ns/call, %9.6f sec total\n", tm1*1.0e+3/(double)cnt,tm1*1.0e-6)
 
-  printf("sqlite3_snprintf(\"%s\"):  ", zFmt);
-  tm2 = timeOfDay();
-  for(i=0; i<cnt; i++){
-    sqlite3_snprintf(sizeof(zBuf), zBuf, zFmt, aVal[i%NN]);
-  }
-  tm2 = timeOfDay() - tm2;
-  printf("%6.1f ns/call, %9.6f sec total\n", tm2*1.0e+3/(double)cnt,tm2*1.0e-6);
+    printf("sqlite3_snprintf(\"%s\"):  ", zFmt)
+    tm2 = timeOfDay()
+    for(i=0; i<cnt; i++):
+        sqlite3_snprintf(sizeof(zBuf), zBuf, zFmt, aVal[i%NN])
+    tm2 = timeOfDay() - tm2
+    printf("%6.1f ns/call, %9.6f sec total\n", tm2*1.0e+3/(double)cnt,tm2*1.0e-6)
 
-  if( tm1 < tm2 ){
-    printf("sprintf() is about %g times faster than sqlite3_snprintf()\n",
-           (double)tm2/(double)tm1);
-  }else{
-    printf("sqlite3_snprintf() is about %g times faster than sprintf()\n",
-           (double)tm1/(double)tm2);
-  }
-  return 0;
-}
+    if( tm1 < tm2 ):
+        printf("sprintf() is about %g times faster than sqlite3_snprintf()\n",
+           (double)tm2/(double)tm1)
+    else:
+        printf("sqlite3_snprintf() is about %g times faster than sprintf()\n",
+           (double)tm1/(double)tm2)
+    return 0

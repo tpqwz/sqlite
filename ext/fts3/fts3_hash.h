@@ -18,8 +18,8 @@
 #define _FTS3_HASH_H_
 
 /* Forward declarations of structures. */
-typedef struct Fts3Hash Fts3Hash;
-typedef struct Fts3HashElem Fts3HashElem;
+typedef struct Fts3Hash Fts3Hash
+typedef struct Fts3HashElem Fts3HashElem
 
 /* A complete hash table is an instance of the following structure.
 ** The internals of this structure are intended to be opaque -- client
@@ -29,29 +29,29 @@ typedef struct Fts3HashElem Fts3HashElem;
 ** accessing this structure are really macros, so we can't really make
 ** this structure opaque.
 */
-struct Fts3Hash {
-  char keyClass;          /* HASH_INT, _POINTER, _STRING, _BINARY */
-  char copyKey;           /* True if copy of key made on insert */
-  int count;              /* Number of entries in this table */
-  Fts3HashElem *first;    /* The first element of the array */
-  int htsize;             /* Number of buckets in the hash table */
-  struct _fts3ht {        /* the hash table */
-    int count;               /* Number of entries with this hash */
-    Fts3HashElem *chain;     /* Pointer to first entry with this hash */
-  } *ht;
-};
+struct Fts3Hash:
+    char keyClass /* HASH_INT, _POINTER, _STRING, _BINARY */
+    char copyKey /* True if copy of key made on insert */
+    int count /* Number of entries in this table */
+    Fts3HashElem *first /* The first element of the array */
+    int htsize /* Number of buckets in the hash table */
+    struct _fts3ht:
+        /* the hash table */
+        int count /* Number of entries with this hash */
+        Fts3HashElem *chain /* Pointer to first entry with this hash */
+    *ht
 
-/* Each element in the hash table is an instance of the following 
+/* Each element in the hash table is an instance of the following
 ** structure.  All elements are stored on a single doubly-linked list.
 **
 ** Again, this structure is intended to be opaque, but it can't really
 ** be opaque because it is used by macros.
 */
-struct Fts3HashElem {
-  Fts3HashElem *next, *prev; /* Next and previous elements in the table */
-  void *data;                /* Data associated with this element */
-  void *pKey; int nKey;      /* Key associated with this element */
-};
+struct Fts3HashElem:
+    Fts3HashElem *next, *prev /* Next and previous elements in the table */
+    void *data /* Data associated with this element */
+    void *pKey
+    int nKey /* Key associated with this element */
 
 /*
 ** There are 2 different modes of operation for a hash table:
@@ -60,10 +60,10 @@ struct Fts3HashElem {
 **                           (including the null-terminator, if any).  Case
 **                           is respected in comparisons.
 **
-**   FTS3_HASH_BINARY        pKey points to binary data nKey bytes long. 
+**   FTS3_HASH_BINARY        pKey points to binary data nKey bytes long.
 **                           memcmp() is used to compare keys.
 **
-** A copy of the key is made if the copyKey parameter to fts3HashInit is 1.  
+** A copy of the key is made if the copyKey parameter to fts3HashInit is 1.
 */
 #define FTS3_HASH_STRING    1
 #define FTS3_HASH_BINARY    2
@@ -71,11 +71,11 @@ struct Fts3HashElem {
 /*
 ** Access routines.  To delete, insert a NULL pointer.
 */
-void sqlite3Fts3HashInit(Fts3Hash *pNew, char keyClass, char copyKey);
-void *sqlite3Fts3HashInsert(Fts3Hash*, const void *pKey, int nKey, void *pData);
-void *sqlite3Fts3HashFind(const Fts3Hash*, const void *pKey, int nKey);
-void sqlite3Fts3HashClear(Fts3Hash*);
-Fts3HashElem *sqlite3Fts3HashFindElem(const Fts3Hash *, const void *, int);
+void sqlite3Fts3HashInit(Fts3Hash *pNew, char keyClass, char copyKey)
+void *sqlite3Fts3HashInsert(Fts3Hash*, const void *pKey, int nKey, void *pData)
+void *sqlite3Fts3HashFind(const Fts3Hash*, const void *pKey, int nKey)
+void sqlite3Fts3HashClear(Fts3Hash*)
+Fts3HashElem *sqlite3Fts3HashFindElem(const Fts3Hash *, const void *, int)
 
 /*
 ** Shorthand for the functions above

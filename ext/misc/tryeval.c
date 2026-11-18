@@ -52,30 +52,28 @@ static void tryEvalFunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  const char *zSql;       /* Next SQL statement to evaluate */
-  sqlite3 *db;            /* The database connection */
-  sqlite3_stmt *pStmt;    /* Compiled bytecode for zSql */
-  int bDone = 0;          /* True if a row with non-NULL first column seen */
-  int rc;                 /* Result from sqlite3 API calls */
-  int i;                  /* Loop counter */
+):
+    const char *zSql /* Next SQL statement to evaluate */
+    sqlite3 *db /* The database connection */
+    sqlite3_stmt *pStmt /* Compiled bytecode for zSql */
+    int bDone = 0 /* True if a row with non-NULL first column seen */
+    int rc /* Result from sqlite3 API calls */
+    int i /* Loop counter */
 
-  db = sqlite3_context_db_handle(context);
-  for(i=0; !bDone && i<argc; i++){
-    zSql = (const char*)sqlite3_value_text(argv[i]);
-    if( zSql==0 ) continue;
-    rc = sqlite3_prepare_v2(db, zSql, -1, &pStmt, 0);
-    if( rc==SQLITE_OK ){
-      while( (rc = sqlite3_step(pStmt))==SQLITE_ROW ){
-        if( sqlite3_column_type(pStmt,0)==SQLITE_NULL ) continue;
-        sqlite3_result_value(context, sqlite3_column_value(pStmt,0));
-        bDone = 1;
-        break;
-      }
-    }
-    sqlite3_finalize(pStmt);
-  }
-}
+    db = sqlite3_context_db_handle(context)
+    for(i=0; !bDone && i<argc; i++):
+        zSql = (const char*)sqlite3_value_text(argv[i])
+        if( zSql==0 ):
+            continue
+        rc = sqlite3_prepare_v2(db, zSql, -1, &pStmt, 0)
+        if( rc==SQLITE_OK ):
+            while( (rc = sqlite3_step(pStmt))==SQLITE_ROW ):
+                if( sqlite3_column_type(pStmt,0)==SQLITE_NULL ):
+                    continue
+                sqlite3_result_value(context, sqlite3_column_value(pStmt,0))
+                bDone = 1
+                break
+        sqlite3_finalize(pStmt)
 
 /* SQL function:   expire(v,n)
 **
@@ -92,38 +90,34 @@ static void expireFunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
-){
-  sqlite3 *db = sqlite3_context_db_handle(context);
-  int iDb = argc>=2 ? sqlite3_value_int(argv[1]) : -1;
-#ifdef SQLITE_TESTCTRL_EXPIRE_STMTS
-  sqlite3_test_control(SQLITE_TESTCTRL_EXPIRE_STMTS, db, iDb);
-#endif
-  sqlite3_result_value(context, argv[0]);
-}
+):
+    sqlite3 *db = sqlite3_context_db_handle(context)
+    int iDb = argc>=2 ? sqlite3_value_int(argv[1]) : -1
+    #ifdef SQLITE_TESTCTRL_EXPIRE_STMTS
+    sqlite3_test_control(SQLITE_TESTCTRL_EXPIRE_STMTS, db, iDb)
+    #endif
+    sqlite3_result_value(context, argv[0])
 
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
 int sqlite3_tryeval_init(
-  sqlite3 *db, 
-  char **pzErrMsg, 
+  sqlite3 *db,
+  char **pzErrMsg,
   const sqlite3_api_routines *pApi
-){
-  int rc = SQLITE_OK;
-  SQLITE_EXTENSION_INIT2(pApi);
-  (void)pzErrMsg;  /* Unused parameter */
-  rc = sqlite3_create_function(db, "tryeval", -1, 
+):
+    int rc = SQLITE_OK
+    SQLITE_EXTENSION_INIT2(pApi)
+    (void)pzErrMsg /* Unused parameter */
+    rc = sqlite3_create_function(db, "tryeval", -1,
                                SQLITE_UTF8, 0,
-                               tryEvalFunc, 0, 0);
-  if( rc==SQLITE_OK ){
-    rc = sqlite3_create_function(db, "expire", 1, 
+                               tryEvalFunc, 0, 0)
+    if( rc==SQLITE_OK ):
+        rc = sqlite3_create_function(db, "expire", 1,
                                SQLITE_UTF8|SQLITE_DETERMINISTIC, 0,
-                               expireFunc, 0, 0);
-  }
-  if( rc==SQLITE_OK ){
-    rc = sqlite3_create_function(db, "expire", 2, 
+                               expireFunc, 0, 0)
+    if( rc==SQLITE_OK ):
+        rc = sqlite3_create_function(db, "expire", 2,
                                SQLITE_UTF8|SQLITE_DETERMINISTIC, 0,
-                               expireFunc, 0, 0);
-  }
-  return rc;
-}
+                               expireFunc, 0, 0)
+    return rc

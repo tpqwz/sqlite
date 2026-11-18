@@ -75,250 +75,228 @@
 ** have found to render Unicode characters on a Windows console while
 ** at the same time avoiding undesirable \n to \r\n translation.
 */
-static int simBinaryStdout = 0;
-static int simBinaryOther = 0;
-
+static int simBinaryStdout = 0
+static int simBinaryOther = 0
 
 /*
 ** Determine if simulated binary mode should be used for output to fd
 */
-static int UseBinaryWText(FILE *fd){
-  if( fd==stdout || fd==stderr ){
-    return simBinaryStdout;
-  }else{
-    return simBinaryOther;
-  }
-}
-
+static int UseBinaryWText(FILE *fd):
+    if( fd==stdout || fd==stderr ):
+        return simBinaryStdout
+    else:
+        return simBinaryOther
 
 /*
 ** Work-alike for the fopen() routine from the standard C library.
 */
-FILE *sqlite3_fopen(const char *zFilename, const char *zMode){
-  FILE *fp = 0;
-  wchar_t *b1, *b2;
-  int sz1, sz2;
+FILE *sqlite3_fopen(const char *zFilename, const char *zMode):
+    FILE *fp = 0
+    wchar_t *b1, *b2
+    int sz1, sz2
 
-  sz1 = (int)strlen(zFilename);
-  sz2 = (int)strlen(zMode);
-  b1 = sqlite3_malloc64( (sz1+1)*sizeof(b1[0]) );
-  b2 = sqlite3_malloc64( (sz2+1)*sizeof(b1[0]) );
-  if( b1 && b2 ){
-    sz1 = MultiByteToWideChar(CP_UTF8, 0, zFilename, sz1, b1, sz1);
-    b1[sz1] = 0;
-    sz2 = MultiByteToWideChar(CP_UTF8, 0, zMode, sz2, b2, sz2);
-    b2[sz2] = 0;
-    fp = _wfopen(b1, b2);
-  }
-  sqlite3_free(b1);
-  sqlite3_free(b2);
-  simBinaryOther = 0;
-  return fp;
-}
-
+    sz1 = (int)strlen(zFilename)
+    sz2 = (int)strlen(zMode)
+    b1 = sqlite3_malloc64( (sz1+1)*sizeof(b1[0]) )
+    b2 = sqlite3_malloc64( (sz2+1)*sizeof(b1[0]) )
+    if( b1 && b2 ):
+        sz1 = MultiByteToWideChar(CP_UTF8, 0, zFilename, sz1, b1, sz1)
+        b1[sz1] = 0
+        sz2 = MultiByteToWideChar(CP_UTF8, 0, zMode, sz2, b2, sz2)
+        b2[sz2] = 0
+        fp = _wfopen(b1, b2)
+    sqlite3_free(b1)
+    sqlite3_free(b2)
+    simBinaryOther = 0
+    return fp
 
 /*
 ** Work-alike for the popen() routine from the standard C library.
 */
-FILE *sqlite3_popen(const char *zCommand, const char *zMode){
-  FILE *fp = 0;
-  wchar_t *b1, *b2;
-  int sz1, sz2;
+FILE *sqlite3_popen(const char *zCommand, const char *zMode):
+    FILE *fp = 0
+    wchar_t *b1, *b2
+    int sz1, sz2
 
-  sz1 = (int)strlen(zCommand);
-  sz2 = (int)strlen(zMode);
-  b1 = sqlite3_malloc64( (sz1+1)*sizeof(b1[0]) );
-  b2 = sqlite3_malloc64( (sz2+1)*sizeof(b1[0]) );
-  if( b1 && b2 ){
-    sz1 = MultiByteToWideChar(CP_UTF8, 0, zCommand, sz1, b1, sz1);
-    b1[sz1] = 0;
-    sz2 = MultiByteToWideChar(CP_UTF8, 0, zMode, sz2, b2, sz2);
-    b2[sz2] = 0;
-    fp = _wpopen(b1, b2);
-  }
-  sqlite3_free(b1);
-  sqlite3_free(b2);
-  return fp;
-}
+    sz1 = (int)strlen(zCommand)
+    sz2 = (int)strlen(zMode)
+    b1 = sqlite3_malloc64( (sz1+1)*sizeof(b1[0]) )
+    b2 = sqlite3_malloc64( (sz2+1)*sizeof(b1[0]) )
+    if( b1 && b2 ):
+        sz1 = MultiByteToWideChar(CP_UTF8, 0, zCommand, sz1, b1, sz1)
+        b1[sz1] = 0
+        sz2 = MultiByteToWideChar(CP_UTF8, 0, zMode, sz2, b2, sz2)
+        b2[sz2] = 0
+        fp = _wpopen(b1, b2)
+    sqlite3_free(b1)
+    sqlite3_free(b2)
+    return fp
 
 /*
 ** Work-alike for fgets() from the standard C library.
 */
-char *sqlite3_fgets(char *buf, int sz, FILE *in){
-  if( UseWtextForInput(in) ){
-    /* When reading from the command-prompt in Windows, it is necessary
-    ** to use _O_WTEXT input mode to read UTF-16 characters, then translate
-    ** that into UTF-8.  Otherwise, non-ASCII characters all get translated
-    ** into '?'.
-    */
-    wchar_t *b1 = sqlite3_malloc64( sz*sizeof(wchar_t) );
-    if( b1==0 ) return 0;
-#ifdef SQLITE_USE_W32_FOR_CONSOLE_IO
-    DWORD nRead = 0;
-    if( IsConsole(in)
-     && ReadConsoleW(GetStdHandle(STD_INPUT_HANDLE), b1, sz-1, &nRead, 0)
-    ){
-      b1[nRead] = 0;
-    }else
-#endif
-    {
-      _setmode(_fileno(in), IsConsole(in) ? _O_WTEXT : _O_U8TEXT);
-      if( fgetws(b1, sz/4, in)==0 ){
-        sqlite3_free(b1);
-        return 0;
-      }
-    }
-    WideCharToMultiByte(CP_UTF8, 0, b1, -1, buf, sz, 0, 0);
-    sqlite3_free(b1);
-    return buf;
-  }else{
-    /* Reading from a file or other input source, just read bytes without
-    ** any translation. */
-    return fgets(buf, sz, in);
-  }
-}
+char *sqlite3_fgets(char *buf, int sz, FILE *in):
+    if( UseWtextForInput(in) ):
+        /* When reading from the command-prompt in Windows, it is necessary
+            ** to use _O_WTEXT input mode to read UTF-16 characters, then translate
+            ** that into UTF-8.  Otherwise, non-ASCII characters all get translated
+            ** into '?'.
+            */
+        wchar_t *b1 = sqlite3_malloc64( sz*sizeof(wchar_t) )
+        if( b1==0 ):
+            return 0
+        #ifdef SQLITE_USE_W32_FOR_CONSOLE_IO
+        DWORD nRead = 0
+        if( IsConsole(in)
+             && ReadConsoleW(GetStdHandle(STD_INPUT_HANDLE), b1, sz-1, &nRead, 0)
+            ):
+                b1[nRead] = 0
+        else
+        #endif
+
+        :
+            _setmode(_fileno(in), IsConsole(in) ? _O_WTEXT : _O_U8TEXT)
+            if( fgetws(b1, sz/4, in)==0 ):
+                sqlite3_free(b1)
+                return 0
+        WideCharToMultiByte(CP_UTF8, 0, b1, -1, buf, sz, 0, 0)
+        sqlite3_free(b1)
+        return buf
+    else:
+        /* Reading from a file or other input source, just read bytes without
+            ** any translation. */
+        return fgets(buf, sz, in)
 
 /*
 ** Send ASCII text as O_BINARY.  But for Unicode characters U+0080 and
 ** greater, switch to O_U8TEXT.
 */
-static void piecemealOutput(wchar_t *b1, int sz, FILE *out){
-  int i;
-  wchar_t c;
-  while( sz>0 ){
-    for(i=0; i<sz && b1[i]>=0x80; i++){}
-    if( i>0 ){
-      c = b1[i];
-      b1[i] = 0;
-      fflush(out);
-      _setmode(_fileno(out), _O_U8TEXT);
-      fputws(b1, out);
-      fflush(out);
-      b1 += i;
-      b1[0] = c;
-      sz -= i;
-    }else{
-      fflush(out);
-      _setmode(_fileno(out), _O_TEXT);
-      _setmode(_fileno(out), _O_BINARY);
-      fwrite(&b1[0], 1, 1, out);
-      for(i=1; i<sz && b1[i]<0x80; i++){
-        fwrite(&b1[i], 1, 1, out);
-      }
-      fflush(out);
-      _setmode(_fileno(out), _O_U8TEXT);
-      b1 += i;
-      sz -= i;
-    }
-  }
-}
+static void piecemealOutput(wchar_t *b1, int sz, FILE *out):
+    int i
+    wchar_t c
+    while( sz>0 ):
+        for(i=0; i<sz && b1[i]>=0x80; i++):
+        if( i>0 ):
+            c = b1[i]
+            b1[i] = 0
+            fflush(out)
+            _setmode(_fileno(out), _O_U8TEXT)
+            fputws(b1, out)
+            fflush(out)
+            b1 += i
+            b1[0] = c
+            sz -= i
+        else:
+            fflush(out)
+            _setmode(_fileno(out), _O_TEXT)
+            _setmode(_fileno(out), _O_BINARY)
+            fwrite(&b1[0], 1, 1, out)
+            for(i=1; i<sz && b1[i]<0x80; i++):
+                fwrite(&b1[i], 1, 1, out)
+            fflush(out)
+            _setmode(_fileno(out), _O_U8TEXT)
+            b1 += i
+            sz -= i
 
 /*
 ** Work-alike for fputs() from the standard C library.
 */
-int sqlite3_fputs(const char *z, FILE *out){
-  if( !UseWtextForOutput(out) ){
-    /* Writing to a file or other destination, just write bytes without
-    ** any translation. */
-    return fputs(z, out);
-  }else{
-    /* One must use UTF16 in order to get unicode support when writing
-    ** to the console on Windows. 
-    */
-    int sz = (int)strlen(z);
-    wchar_t *b1 = sqlite3_malloc64( (sz+1)*sizeof(wchar_t) );
-    if( b1==0 ) return 0;
-    sz = MultiByteToWideChar(CP_UTF8, 0, z, sz, b1, sz);
-    b1[sz] = 0;
+int sqlite3_fputs(const char *z, FILE *out):
+    if( !UseWtextForOutput(out) ):
+        /* Writing to a file or other destination, just write bytes without
+            ** any translation. */
+        return fputs(z, out)
+    else:
+        /* One must use UTF16 in order to get unicode support when writing
+            ** to the console on Windows.
+            */
+        int sz = (int)strlen(z)
+        wchar_t *b1 = sqlite3_malloc64( (sz+1)*sizeof(wchar_t) )
+        if( b1==0 ):
+            return 0
+        sz = MultiByteToWideChar(CP_UTF8, 0, z, sz, b1, sz)
+        b1[sz] = 0
 
-#ifdef SQLITE_USE_W32_FOR_CONSOLE_IO
-    DWORD nWr = 0;
-    if( IsConsole(out)
-      && WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE),b1,sz,&nWr,0)
-    ){
-      /* If writing to the console, then the WriteConsoleW() is all we
-      ** need to do. */
-    }else
-#endif
-    {
-      /* As long as SQLITE_USE_W32_FOR_CONSOLE_IO is not defined, or for
-      ** non-console I/O even if that macro is defined, write using the
-      ** standard library. */
-      _setmode(_fileno(out), _O_U8TEXT);
-      if( UseBinaryWText(out) ){
-        piecemealOutput(b1, sz, out);
-      }else{
-        fputws(b1, out);
-      }
-    }
-    sqlite3_free(b1);
-    return 0;
-  }
-}
+        #ifdef SQLITE_USE_W32_FOR_CONSOLE_IO
+        DWORD nWr = 0
+        if( IsConsole(out)
+              && WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE),b1,sz,&nWr,0)
+            ):
+                /* If writing to the console, then the WriteConsoleW() is all we
+                      ** need to do. */
+        else
+        #endif
 
+        :
+            /* As long as SQLITE_USE_W32_FOR_CONSOLE_IO is not defined, or for
+                  ** non-console I/O even if that macro is defined, write using the
+                  ** standard library. */
+            _setmode(_fileno(out), _O_U8TEXT)
+            if( UseBinaryWText(out) ):
+                piecemealOutput(b1, sz, out)
+            else:
+                fputws(b1, out)
+        sqlite3_free(b1)
+        return 0
 
 /*
 ** Work-alikes for fprintf() and vfprintf() from the standard C library.
 */
-int sqlite3_fprintf(FILE *out, const char *zFormat, ...){
-  int rc;
-  if( UseWtextForOutput(out) ){
-    /* When writing to the command-prompt in Windows, it is necessary
-    ** to use _O_WTEXT input mode and write UTF-16 characters.
-    */
-    char *z;
-    va_list ap;
+int sqlite3_fprintf(FILE *out, const char *zFormat, ...):
+    int rc
+    if( UseWtextForOutput(out) ):
+        /* When writing to the command-prompt in Windows, it is necessary
+            ** to use _O_WTEXT input mode and write UTF-16 characters.
+            */
+        char *z
+        va_list ap
 
-    va_start(ap, zFormat);
-    z = sqlite3_vmprintf(zFormat, ap);
-    va_end(ap);
-    if( z==0 ) return -1;
-    sqlite3_fputs(z, out);
-    rc = (int)strlen(z);
-    sqlite3_free(z);
-  }else{
-    /* Writing to a file or other destination, just write bytes without
-    ** any translation. */
-    va_list ap;
-    va_start(ap, zFormat);
-    rc = vfprintf(out, zFormat, ap);
-    va_end(ap);
-  }
-  return rc;
-}
-int sqlite3_vfprintf(FILE *out, const char *zFormat, va_list ap){
-  int rc;
-  if( UseWtextForOutput(out) ){
-    /* When writing to the command-prompt in Windows, it is necessary
-    ** to use _O_WTEXT input mode and write UTF-16 characters.
-    */
-    char *z;
-    z = sqlite3_vmprintf(zFormat, ap);
-    if( z==0 ) return -1;
-    sqlite3_fputs(z, out);
-    rc = (int)strlen(z);
-    sqlite3_free(z);
-  }else{
-    /* Writing to a file or other destination, just write bytes without
-    ** any translation. */
-    rc = vfprintf(out, zFormat, ap);
-  }
-  return rc;
-}
+        va_start(ap, zFormat)
+        z = sqlite3_vmprintf(zFormat, ap)
+        va_end(ap)
+        if( z==0 ):
+            return -1
+        sqlite3_fputs(z, out)
+        rc = (int)strlen(z)
+        sqlite3_free(z)
+    else:
+        /* Writing to a file or other destination, just write bytes without
+            ** any translation. */
+        va_list ap
+        va_start(ap, zFormat)
+        rc = vfprintf(out, zFormat, ap)
+        va_end(ap)
+    return rc
+int sqlite3_vfprintf(FILE *out, const char *zFormat, va_list ap):
+    int rc
+    if( UseWtextForOutput(out) ):
+        /* When writing to the command-prompt in Windows, it is necessary
+            ** to use _O_WTEXT input mode and write UTF-16 characters.
+            */
+        char *z
+        z = sqlite3_vmprintf(zFormat, ap)
+        if( z==0 ):
+            return -1
+        sqlite3_fputs(z, out)
+        rc = (int)strlen(z)
+        sqlite3_free(z)
+    else:
+        /* Writing to a file or other destination, just write bytes without
+            ** any translation. */
+        rc = vfprintf(out, zFormat, ap)
+    return rc
 
 /*
 ** Set the mode for an output stream.  mode argument is typically _O_BINARY or
 ** _O_TEXT.
 */
-void sqlite3_fsetmode(FILE *fp, int mode){
-  if( !UseWtextForOutput(fp) ){
-    fflush(fp);
-    _setmode(_fileno(fp), mode);
-  }else if( fp==stdout || fp==stderr ){
-    simBinaryStdout = (mode==_O_BINARY);
-  }else{
-    simBinaryOther = (mode==_O_BINARY);
-  }
-}
+void sqlite3_fsetmode(FILE *fp, int mode):
+    if( !UseWtextForOutput(fp) ):
+        fflush(fp)
+        _setmode(_fileno(fp), mode)
+    else if( fp==stdout || fp==stderr ):
+        simBinaryStdout = (mode==_O_BINARY)
+    else:
+        simBinaryOther = (mode==_O_BINARY)
 
 #endif /* defined(_WIN32) */
